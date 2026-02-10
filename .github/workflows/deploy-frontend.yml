@@ -1,0 +1,36 @@
+name: Deploy Frontend to Hostinger
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  web-deploy:
+    name: 🎉 Deploy to Hostinger
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+
+      - name: 🔨 Install & Build
+        run: |
+          npm install
+          npm run build
+        env:
+          # We use a secret for the API URL so you can change it without editing code
+          VITE_API_URL: ${{ secrets.VITE_API_URL }} 
+
+      - name: 📂 Sync files (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./public_html/ # ⚠️ CHANGE THIS if your Hostinger folder is different (e.g. ./domains/tarzify.com/public_html/)
