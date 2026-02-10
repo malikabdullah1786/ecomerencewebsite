@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Package, ShoppingBag, QrCode, Printer, FileDown,
-    CheckCircle2, Clock, Truck, Plus, Edit3, Trash2, Loader2, ArrowRight, X, AlertCircle
+    Package, ShoppingBag, QrCode, Printer,
+    CheckCircle2, Clock, Truck, Plus, Edit3, Loader2, X
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
