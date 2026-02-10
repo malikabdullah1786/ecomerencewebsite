@@ -28,11 +28,24 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }} 
 
-      - name: 📂 Sync files (FTP)
-        uses: sebastianpopp/ftp-action@releases/v2
-        with:
-          host: ${{ secrets.FTP_SERVER }}
-          user: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          localDir: "dist"
-          remoteDir: "/public_html"
+      - name: 📂 Deploy via FTP
+        run: |
+          # Install lftp
+          sudo apt-get update -qq
+          sudo apt-get install -y lftp
+          
+          # Debug: Check if secrets are set (without revealing values)
+          echo "Checking secrets..."
+          if [ -z "${{ secrets.FTP_SERVER }}" ]; then echo "ERROR: FTP_SERVER is empty!"; exit 1; fi
+          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then echo "ERROR: FTP_USERNAME is empty!"; exit 1; fi
+          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "ERROR: FTP_PASSWORD is empty!"; exit 1; fi
+          echo "All secrets are set ✓"
+          
+          # Upload using lftp with verbose output
+          lftp -e "
+          set ftp:ssl-allow no;
+          set ftp:passive-mode on;
+          open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_SERVER }};
+          mirror -R --verbose --delete dist /public_html;
+          bye
+          "
