@@ -24,7 +24,7 @@ jobs:
           npm run build
         env:
           # We use a secret for the API URL so you can change it without editing code
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: http://85.211.250.189:5000/api
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }} 
 
