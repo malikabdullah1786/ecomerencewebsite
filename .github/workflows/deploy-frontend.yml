@@ -41,11 +41,12 @@ jobs:
           if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "ERROR: FTP_PASSWORD is empty!"; exit 1; fi
           echo "All secrets are set ✓"
           
-          # Upload using lftp with verbose output
+          # Upload using lftp WITHOUT --delete to preserve existing folders (store, portfolio, etc.)
           lftp -e "
           set ftp:ssl-allow no;
           set ftp:passive-mode on;
           open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_SERVER }};
-          mirror -R --verbose --delete dist /public_html;
+          mirror -R --verbose --exclude-glob .git/ --exclude-glob .github/ dist /public_html;
           bye
           "
+
