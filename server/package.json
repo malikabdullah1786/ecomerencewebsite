@@ -1,8 +1,8 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "type": "module",
   "description": "The All-in-One Store Backend",
+  "main": "src/index.ts",
   "main": "src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
