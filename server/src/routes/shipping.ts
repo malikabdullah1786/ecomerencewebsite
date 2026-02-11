@@ -7,8 +7,8 @@ router.post('/calculate', async (req, res) => {
         // Mock shipping calculation logic
         // In a real app, this would use weight, dimensions, and destination
         const rates = [
-            { id: 'standard', name: 'Standard (TCS)', price: 250, estimated_days: '3-5' },
-            { id: 'express', name: 'Express (Leopards)', price: 500, estimated_days: '1-2' }
+            { id: 'fastpay', name: 'Standard (PayFast)', price: 250, estimated_days: '3-5' },
+            { id: 'cod', name: 'Cash on Delivery (COD)', price: 300, estimated_days: '3-5' }
         ];
 
         res.json({ success: true, rates });

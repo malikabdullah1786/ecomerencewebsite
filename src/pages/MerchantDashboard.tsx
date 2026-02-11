@@ -77,6 +77,62 @@ export const MerchantDashboard = () => {
         }
     };
 
+    const [uploading, setUploading] = useState(false);
+    const [trackingData, setTrackingData] = useState({ orderId: null, tracking_number: '', courier_name: 'TCS' });
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/products/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                setNewProduct(prev => ({ ...prev, image_url: data.imageUrl }));
+            } else {
+                alert('Upload failed: ' + data.error);
+            }
+        } catch (error) {
+            alert('Upload error. Make sure backend is running.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleAssignTracking = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/assign-tracking/${trackingData.orderId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tracking_number: trackingData.tracking_number,
+                    courier_name: trackingData.courier_name
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Tracking assigned! Status updated to Shipped.');
+                setTrackingData({ orderId: null, tracking_number: '', courier_name: 'TCS' });
+                // Refresh orders
+                const { data: updatedOrders } = await supabase
+                    .from('orders')
+                    .select('*, order_items(*, products(*))')
+                    .order('created_at', { ascending: false });
+                setOrders(updatedOrders || []);
+            }
+        } catch (error) {
+            alert('Error assigning tracking');
+        }
+    };
+
     const handleAddProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -235,9 +291,29 @@ export const MerchantDashboard = () => {
                                     <input required type="number" min="0" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none focus:ring-2 ring-primary/30" placeholder="0" />
                                 </div>
 
-                                <div className="col-span-2 space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Image URL</label>
-                                    <input required type="url" value={newProduct.image_url} onChange={e => setNewProduct({ ...newProduct, image_url: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none focus:ring-2 ring-primary/30" placeholder="https://..." />
+                                <div className="col-span-2 space-y-4">
+                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Image</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-bold opacity-50">Upload File (Cloudinary)</p>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageUpload}
+                                                className="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary file:text-white hover:file:bg-primary/80 cursor-pointer"
+                                            />
+                                            {uploading && <p className="text-[10px] text-primary animate-pulse">Uploading to Cloudinary...</p>}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-bold opacity-50">Or Paste Image URL</p>
+                                            <input type="url" value={newProduct.image_url} onChange={e => setNewProduct({ ...newProduct, image_url: e.target.value })} className="w-full glass border-none rounded-xl p-3 text-sm outline-none focus:ring-2 ring-primary/30" placeholder="https://..." />
+                                        </div>
+                                    </div>
+                                    {newProduct.image_url && (
+                                        <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-primary/20">
+                                            <img src={newProduct.image_url} alt="Preview" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="col-span-2 flex items-center gap-4 p-4 glass rounded-2xl">
@@ -371,27 +447,65 @@ export const MerchantDashboard = () => {
                                     <p className="text-lg font-black text-primary">Rs. {Number(order.total_amount).toLocaleString()}</p>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    {[
-                                        { id: 'pending', icon: Clock, label: 'Pending' },
-                                        { id: 'shipped', icon: Truck, label: 'Ship' },
-                                        { id: 'delivered', icon: CheckCircle2, label: 'Done' }
-                                    ].map(status => (
-                                        <button
-                                            key={status.id}
-                                            onClick={() => handleUpdateStatus(order.id, status.id)}
-                                            className={`flex items-center gap-2 p-4 px-6 rounded-2xl transition-all ${order.status === status.id ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-foreground/5 opacity-40 hover:opacity-100'}`}
-                                        >
-                                            <status.icon className="w-4 h-4" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{status.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                                {order.status !== 'delivered' && (
+                                    <button
+                                        onClick={() => setTrackingData({ ...trackingData, orderId: order.id })}
+                                        className="p-4 bg-orange-500/10 text-orange-500 rounded-2xl hover:bg-orange-500 hover:text-white transition-all font-bold text-xs flex items-center gap-2"
+                                    >
+                                        <Truck className="w-4 h-4" />
+                                        Assign tracking
+                                    </button>
+                                )}
+
+                                {[
+                                    { id: 'pending', icon: Clock, label: 'Pending' },
+                                    { id: 'shipped', icon: Truck, label: 'Ship' },
+                                    { id: 'delivered', icon: CheckCircle2, label: 'Done' }
+                                ].map(status => (
+                                    <button
+                                        key={status.id}
+                                        onClick={() => handleUpdateStatus(order.id, status.id)}
+                                        className={`flex items-center gap-2 p-4 px-6 rounded-2xl transition-all ${order.status === status.id ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-foreground/5 opacity-40 hover:opacity-100'}`}
+                                    >
+                                        <status.icon className="w-4 h-4" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">{status.label}</span>
+                                    </button>
+                                ))}
                             </div>
-                        ))}
-                    </motion.div>
+                            </div>
+                ))}
+
+                {/* Assign Tracking Popup */}
+                <AnimatePresence>
+                    {trackingData.orderId && (
+                        <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-md rounded-[3rem] p-10 border border-border shadow-2xl space-y-6">
+                                <h3 className="text-2xl font-black italic uppercase tracking-tighter">Assign Tracking</h3>
+                                <form onSubmit={handleAssignTracking} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest opacity-30">Courier Partner</label>
+                                        <select value={trackingData.courier_name} onChange={e => setTrackingData({ ...trackingData, courier_name: e.target.value })} className="w-full glass border-none rounded-2xl p-4 bg-background">
+                                            <option value="TCS">TCS</option>
+                                            <option value="Leopards">Leopards</option>
+                                            <option value="PostEx">PostEx</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-widest opacity-30">Tracking Number</label>
+                                        <input required type="text" value={trackingData.tracking_number} onChange={e => setTrackingData({ ...trackingData, tracking_number: e.target.value })} className="w-full glass border-none rounded-2xl p-4" placeholder="e.g. 123456789" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 pt-4">
+                                        <button type="submit" className="py-4 bg-primary text-white rounded-2xl font-black">SAVE</button>
+                                        <button type="button" onClick={() => setTrackingData({ orderId: null, tracking_number: '', courier_name: 'TCS' })} className="py-4 bg-foreground/5 rounded-2xl font-black">CANCEL</button>
+                                    </div>
+                                </form>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
                 )}
-            </div>
         </div>
+        </div >
     );
 };

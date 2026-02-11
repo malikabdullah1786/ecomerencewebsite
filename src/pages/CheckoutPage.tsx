@@ -263,7 +263,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                                         name="shipping"
                                                         className="w-5 h-5 text-primary focus:ring-0 border-none bg-foreground/10"
                                                         checked={formData.shippingMethod === rate.id}
-                                                        onChange={() => setFormData({ ...formData, shippingMethod: rate.id })}
+                                                        onChange={() => setFormData({ ...formData, shippingMethod: rate.id, paymentMethod: rate.id })}
                                                     />
                                                     <div>
                                                         <p className="font-black">{rate.name}</p>
@@ -293,7 +293,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                 <div className="space-y-4">
                                     <div className="space-y-4">
                                         <div
-                                            onClick={() => setFormData({ ...formData, paymentMethod: 'fastpay' })}
+                                            onClick={() => setFormData({ ...formData, paymentMethod: 'fastpay', shippingMethod: 'fastpay' })}
                                             className={`p-6 rounded-3xl border-2 cursor-pointer transition-all ${formData.paymentMethod === 'fastpay' ? 'border-primary bg-primary/5' : 'border-white/10 glass order-2 opacity-50'}`}
                                         >
                                             <div className="flex items-center justify-between">
@@ -302,16 +302,29 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                                         <span className="text-orange-500 font-black text-xl">FP</span>
                                                     </div>
                                                     <div>
-                                                        <p className="font-black">FastPay Wallet</p>
-                                                        <p className="text-xs opacity-50">One-tap secure payment</p>
+                                                        <p className="font-black">FastPay / Cards</p>
+                                                        <p className="text-xs opacity-50">Secure online payment</p>
                                                     </div>
                                                 </div>
                                                 {formData.paymentMethod === 'fastpay' && <CheckCircle2 className="text-primary w-6 h-6" />}
                                             </div>
+
+                                            {formData.paymentMethod === 'fastpay' && (
+                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-6 pt-6 border-t border-primary/10 space-y-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40">Card Details (Dummy)</label>
+                                                        <input type="text" placeholder="XXXX XXXX XXXX XXXX" className="w-full bg-foreground/5 border-none rounded-xl p-4 font-mono tracking-widest outline-none focus:ring-2 ring-primary/30" />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <input type="text" placeholder="MM/YY" className="w-full bg-foreground/5 border-none rounded-xl p-4 font-mono outline-none focus:ring-2 ring-primary/30" />
+                                                        <input type="text" placeholder="CVV" className="w-full bg-foreground/5 border-none rounded-xl p-4 font-mono outline-none focus:ring-2 ring-primary/30" />
+                                                    </div>
+                                                </motion.div>
+                                            )}
                                         </div>
 
                                         <div
-                                            onClick={() => setFormData({ ...formData, paymentMethod: 'cod' })}
+                                            onClick={() => setFormData({ ...formData, paymentMethod: 'cod', shippingMethod: 'cod' })}
                                             className={`p-6 rounded-3xl border-2 cursor-pointer transition-all ${formData.paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-white/10 glass order-2 opacity-50'}`}
                                         >
                                             <div className="flex items-center justify-between">

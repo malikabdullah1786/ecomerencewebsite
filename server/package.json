@@ -10,12 +10,15 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",
+    "@types/multer": "^2.0.0",
     "axios": "^1.7.9",
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
+    "multer": "^2.0.2",
     "resend": "^6.9.1"
   },
   "devDependencies": {

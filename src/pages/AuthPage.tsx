@@ -39,7 +39,7 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-6 pt-20">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

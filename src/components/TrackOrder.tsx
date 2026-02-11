@@ -120,6 +120,25 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
                                 );
                             })}
                         </div>
+
+                        {status.tracking_number && (
+                            <div className="p-6 bg-primary/5 border border-primary/20 rounded-3xl space-y-2">
+                                <div className="flex items-center gap-3 text-primary">
+                                    <Truck className="w-5 h-5" />
+                                    <h4 className="font-black uppercase tracking-widest text-sm">Shipping Information</h4>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Courier Partner</p>
+                                        <p className="font-black">{status.courier_name || 'Standard'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Tracking Number</p>
+                                        <p className="font-black text-primary select-all">{status.tracking_number}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </motion.div>

@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import ordersRouter from './routes/orders';
 import paymentRouter from './routes/payment';
 import shippingRouter from './routes/shipping';
+import productsRouter from './routes/products';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use('/api/orders', ordersRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/shipping', shippingRouter);
+app.use('/api/products', productsRouter);
 
 // Seed Endpoint to ensure 8+ products
 app.post('/api/setup/seed', async (req, res) => {

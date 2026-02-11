@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
-import { ShoppingCart, User as UserIcon, Search, Menu, LogOut } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingCart, User as UserIcon, Search, Menu, LogOut, Shield, LayoutDashboard } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -15,6 +16,13 @@ export const Navbar = ({
 }) => {
     const cartItemsCount = useCartStore((state) => state.items.length);
     const { user, role, signOut } = useAuthStore();
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    const handleSignOut = async () => {
+        await signOut();
+        setIsProfileOpen(false);
+        window.location.hash = '';
+    };
 
     return (
         <motion.header
@@ -97,9 +105,9 @@ export const Navbar = ({
                         </button>
 
                         {user ? (
-                            <div className="flex items-center gap-2">
+                            <div className="relative">
                                 <button
-                                    onClick={() => window.location.hash = '#profile'}
+                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
                                     className="flex items-center gap-2 glass px-3 py-1.5 rounded-full text-xs font-bold hover:scale-105 transition-transform"
                                 >
                                     <div className="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-[10px]">
@@ -109,12 +117,51 @@ export const Navbar = ({
                                         {user.user_metadata?.full_name || user.email?.split('@')[0]}
                                     </span>
                                 </button>
-                                <button
-                                    onClick={() => signOut()}
-                                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-full"
-                                >
-                                    <LogOut className="w-5 h-5" />
-                                </button>
+
+                                <AnimatePresence>
+                                    {isProfileOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                                className="absolute right-0 mt-4 w-64 glass border border-white/10 rounded-[2rem] p-4 shadow-2xl z-50 overflow-hidden"
+                                            >
+                                                <div className="p-4 border-b border-white/5 space-y-1 mb-2">
+                                                    <p className="text-xs font-black uppercase tracking-widest opacity-30">Account</p>
+                                                    <p className="font-black truncate">{user.email}</p>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <button onClick={() => { setIsProfileOpen(false); window.location.hash = '#profile'; }} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left">
+                                                        <UserIcon className="w-4 h-4 opacity-50" />
+                                                        My Profile
+                                                    </button>
+
+                                                    {role === 'merchant' && (
+                                                        <button onClick={() => { setIsProfileOpen(false); window.location.hash = '#merchant'; }} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left">
+                                                            <LayoutDashboard className="w-4 h-4 opacity-50" />
+                                                            Merchant Panel
+                                                        </button>
+                                                    )}
+
+                                                    {role === 'admin' && (
+                                                        <button onClick={() => { setIsProfileOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-[10px] font-black uppercase tracking-widest text-left">
+                                                            <Shield className="w-4 h-4 opacity-50" />
+                                                            Admin Panel
+                                                        </button>
+                                                    )}
+
+                                                    <button onClick={handleSignOut} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-500/10 text-red-500 transition-all text-[10px] font-black uppercase tracking-widest text-left">
+                                                        <LogOut className="w-4 h-4 opacity-50" />
+                                                        Log Out
+                                                    </button>
+                                                </div>
+                                            </motion.div>
+                                        </>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         ) : (
                             <button
