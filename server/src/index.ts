@@ -20,9 +20,11 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.supabasedemo.com"],
-            "img-src": ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*.unsplash.com"],
-            "connect-src": ["'self'", "https://*.supabase.co", "https://*.cloudinary.com"]
+            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.supabasedemo.com", "https://*.supabase.co"],
+            "img-src": ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*.unsplash.com", "https://api.qrserver.com"],
+            "connect-src": ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://*.cloudinary.com", "https://tarzify.com", "https://85.211.250.189:5000"],
+            "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            "font-src": ["'self'", "https://fonts.gstatic.com"]
         }
     }
 }));
