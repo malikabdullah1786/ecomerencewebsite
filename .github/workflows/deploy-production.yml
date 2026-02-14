@@ -49,7 +49,7 @@ jobs:
         with:
           host: ${{ secrets.AZURE_HOST }}
           username: ${{ secrets.AZURE_USERNAME }}
-          key: ${{ secrets.AZURE_SSH_KEY }}
+          key: ${{ secrets.AZURE_KEY }}
           script: |
             cd ~/ecomerencewebsite
             git pull origin main

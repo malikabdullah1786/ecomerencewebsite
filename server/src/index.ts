@@ -17,12 +17,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(helmet());
 app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'https://tarzify.com',       // Production Frontend
-        'https://www.tarzify.com'    // Production Frontend (www)
-    ],
+    origin: true, // Allow all origins (for debugging/initial setup)
     credentials: true
 }));
 app.use(morgan('dev'));
