@@ -15,7 +15,17 @@ import { supabase } from './lib/supabase';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.supabasedemo.com"],
+            "img-src": ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*.unsplash.com"],
+            "connect-src": ["'self'", "https://*.supabase.co", "https://*.cloudinary.com"]
+        }
+    }
+}));
 app.use(cors({
     origin: true, // Allow all origins (for debugging/initial setup)
     credentials: true
