@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy Production
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  web-deploy:
-    name: 🎉 Deploy
+  frontend-deploy:
+    name: 🚀 Deploy Frontend (Hostinger)
     runs-on: ubuntu-latest
     steps:
       - name: 🚚 Get latest code
@@ -26,7 +26,6 @@ jobs:
         run: npm run build
         env:
           CI: false
-          # These will be baked into the build
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
@@ -40,3 +39,21 @@ jobs:
           server-dir: /public_html/
           local-dir: ./dist/
           protocol: ftps
+
+  backend-deploy:
+    name: ☁️ Deploy Backend (Azure)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔌 Trigger Update via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USERNAME }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          script: |
+            cd ~/ecomerencewebsite
+            git pull origin main
+            cd server
+            npm install
+            npm run build
+            pm2 restart tarzify-backend
