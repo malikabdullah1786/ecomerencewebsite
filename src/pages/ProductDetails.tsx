@@ -40,13 +40,20 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                 .from('reviews')
                 .select(`
                     *,
-                    profiles:user_id (full_name)
+                    user:user_id (
+                        full_name
+                    )
                 `)
                 .eq('product_id', productId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setReviews(data || []);
+            // Map the user data to profiles for backward compatibility
+            const reviewsWithProfiles = data?.map(review => ({
+                ...review,
+                profiles: review.user
+            })) || [];
+            setReviews(reviewsWithProfiles);
         } catch (err) {
             console.error('Error fetching reviews:', err);
         } finally {

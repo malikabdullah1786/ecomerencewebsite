@@ -82,7 +82,7 @@ export const MerchantDashboard = () => {
             .from('orders')
             .select(`
                 *,
-                profiles:user_id(full_name),
+                user:user_id(full_name),
                 order_items(*, products(*))
             `)
             .order('created_at', { ascending: false });
@@ -91,7 +91,12 @@ export const MerchantDashboard = () => {
             console.error('Error fetching orders:', error.message);
             return;
         }
-        setOrders(data || []);
+        // Map the user data to profiles for backward compatibility
+        const ordersWithProfiles = data?.map(order => ({
+            ...order,
+            profiles: order.user
+        })) || [];
+        setOrders(ordersWithProfiles);
     };
 
     useEffect(() => {
