@@ -15,12 +15,19 @@ import { supabase } from './lib/supabase';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CSP Configuration - stricter in production
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const scriptSrcDirectives = ["'self'", "'unsafe-inline'", "https://*.supabasedemo.com", "https://*.supabase.co"];
+if (isDevelopment) {
+    scriptSrcDirectives.push("'unsafe-eval'"); // Only allow eval in development
+}
+
 app.use(helmet({
     crossOriginResourcePolicy: false,
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.supabasedemo.com", "https://*.supabase.co"],
+            "script-src": scriptSrcDirectives,
             "img-src": ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*.unsplash.com", "https://api.qrserver.com"],
             "connect-src": ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://*.cloudinary.com", "https://tarzify.com", "https://85.211.250.189:5000"],
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
