@@ -41,12 +41,12 @@ function App() {
   useEffect(() => {
     // Lenis initialization for smooth scrolling
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 0.8,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
-      wheelMultiplier: 1,
+      wheelMultiplier: 1.5,
       infinite: false,
     });
 
@@ -66,7 +66,7 @@ function App() {
     const handleHashChange = () => {
       const hash = window.location.hash;
       setShowAdmin(hash === '#admin' && role === 'admin');
-      setShowMerchant(hash === '#merchant' && role === 'merchant');
+      setShowMerchant(hash === '#merchant' && (role === 'merchant' || role === 'admin'));
       setShowCheckout(hash === '#checkout');
       setShowCheckout(hash === '#checkout');
       setShowProfile(hash === '#profile');
@@ -96,7 +96,7 @@ function App() {
     if (showPolicy) return <PolicyPage type={showPolicy} />;
 
     if (showAdmin && role === 'admin') return <AdminDashboard />;
-    if (showMerchant && role === 'merchant') return <MerchantDashboard />;
+    if (showMerchant && (role === 'merchant' || role === 'admin')) return <MerchantDashboard />;
 
     if (viewProductId) return (
       <ProductDetails
@@ -157,7 +157,7 @@ function App() {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
             {loading ? (
               [1, 2, 3, 4].map(i => <div key={i} className="h-96 glass animate-pulse rounded-[3rem]" />)
             ) : filteredProducts.map((product) => (

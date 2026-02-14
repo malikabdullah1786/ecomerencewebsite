@@ -1,39 +1,39 @@
 import express from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
-
-dotenv.config();
+import { supabase } from '../lib/supabase';
 
 const router = express.Router();
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-// Cloudinary Config - Use environment variables
+// Cloudinary Config
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dtaonueid',
-    api_key: process.env.CLOUDINARY_API_KEY || 'GXSLkzUOZjxmc93FtnzaY5MuLhs',
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    api_key: process.env.CLOUDINARY_API_KEY || '895755865122633',
+    api_secret: process.env.CLOUDINARY_API_SECRET || 'GXSLkzUOZjxmc93FtnzaY5MuLhs'
 });
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Upload Endpoint
-router.post('/upload', upload.single('image'), async (req, res) => {
+// Upload Endpoint (Multiple Images)
+router.post('/upload', upload.array('images', 5), async (req, res) => {
     try {
-        if (!req.file) throw new Error('No file uploaded');
+        const files = req.files as Express.Multer.File[];
+        if (!files || files.length === 0) throw new Error('No files uploaded');
 
-        // Upload to Cloudinary
-        const b64 = Buffer.from(req.file.buffer).toString('base64');
-        let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-
-        const response = await cloudinary.uploader.upload(dataURI, {
-            folder: 'tarzify/products'
+        const uploadPromises = files.map(async (file) => {
+            const b64 = Buffer.from(file.buffer).toString('base64');
+            let dataURI = "data:" + file.mimetype + ";base64," + b64;
+            const response = await cloudinary.uploader.upload(dataURI, {
+                folder: 'tarzify/products'
+            });
+            return response.secure_url;
         });
+
+        const urls = await Promise.all(uploadPromises);
 
         res.json({
             success: true,
-            imageUrl: response.secure_url
+            imageUrls: urls
         });
     } catch (error: any) {
         console.error('Upload error:', error);

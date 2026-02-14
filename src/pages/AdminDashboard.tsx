@@ -158,7 +158,9 @@ export const AdminDashboard = () => {
                                         products.map((product) => (
                                             <tr key={product.id} className="hover:bg-foreground/[0.01]">
                                                 <td className="px-6 py-4 flex items-center gap-3">
-                                                    <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-foreground/5 flex-shrink-0">
+                                                        {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />}
+                                                    </div>
                                                     <div>
                                                         <div className="font-bold truncate max-w-[200px]">{product.name}</div>
                                                         <div className="text-xs opacity-50 font-mono">{product.sku}</div>

@@ -57,54 +57,60 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -mr-16 -mt-16" />
 
                 <div className="text-center mb-10">
-                    <h2 className="text-3xl font-black tracking-tighter mb-2">
+                    <h2 className="text-4xl font-black tracking-tighter mb-2 text-white">
                         {mode === 'login' ? 'Welcome Back' : 'Create Account'}
                     </h2>
-                    <p className="text-sm opacity-50">
+                    <p className="text-base font-medium text-white/70">
                         {mode === 'login' ? 'The premium shopping experience awaits.' : 'Join the All-in-One Store today.'}
                     </p>
                 </div>
 
                 <form onSubmit={handleAuth} className="space-y-6">
                     {mode === 'signup' && (
-                        <div className="relative">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
+                        <div className="relative group">
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 group-focus-within:text-white transition-opacity" />
                             <input
                                 type="text"
+                                id="fullName"
+                                name="fullName"
                                 placeholder="Full Name"
                                 required
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                className="w-full bg-foreground/5 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 ring-primary/30 transition-all outline-none"
+                                className="w-full bg-white/10 border border-white/20 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 ring-primary/50 transition-all outline-none text-white placeholder:text-white/40 font-medium"
                             />
                         </div>
                     )}
 
-                    <div className="relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
+                    <div className="relative group">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 group-focus-within:text-white transition-opacity" />
                         <input
                             type="email"
+                            id="email"
+                            name="email"
                             placeholder="Email Address"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-foreground/5 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 ring-primary/30 transition-all outline-none"
+                            className="w-full bg-white/10 border border-white/20 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 ring-primary/50 transition-all outline-none text-white placeholder:text-white/40 font-medium"
                         />
                     </div>
 
-                    <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
+                    <div className="relative group">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50 group-focus-within:text-white transition-opacity" />
                         <input
                             type="password"
+                            id="password"
+                            name="password"
                             placeholder="Password"
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-foreground/5 border-none rounded-2xl py-4 pl-12 pr-4 focus:ring-2 ring-primary/30 transition-all outline-none"
+                            className="w-full bg-white/10 border border-white/20 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 ring-primary/50 transition-all outline-none text-white placeholder:text-white/40 font-medium"
                         />
                     </div>
 
-                    {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
+                    {error && <p className="text-red-400 text-xs font-bold text-center">{error}</p>}
 
                     <button
                         disabled={loading}
@@ -119,8 +125,8 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                     </button>
                 </form>
 
-                <div className="mt-8 text-center text-sm">
-                    <span className="opacity-50">
+                <div className="mt-8 text-center text-sm font-medium">
+                    <span className="text-white/70">
                         {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
                     </span>
                     <button

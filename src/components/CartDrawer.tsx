@@ -62,14 +62,23 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3 bg-foreground/5 rounded-lg p-1">
                                                     <button
-                                                        onClick={() => item.quantity > 1 && removeItem(item.id) ? null : useCartStore.getState().updateQuantity(item.id, -1)}
-                                                        className="w-6 h-6 flex items-center justify-center hover:bg-white rounded-md transition-colors font-bold"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (item.quantity > 1) {
+                                                                useCartStore.getState().updateQuantity(item.id, -1);
+                                                            }
+                                                        }}
+                                                        disabled={item.quantity <= 1}
+                                                        className="w-6 h-6 flex items-center justify-center hover:bg-white rounded-md transition-colors font-bold disabled:opacity-30 disabled:cursor-not-allowed"
                                                     >
                                                         -
                                                     </button>
                                                     <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
                                                     <button
-                                                        onClick={() => useCartStore.getState().updateQuantity(item.id, 1)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            useCartStore.getState().updateQuantity(item.id, 1);
+                                                        }}
                                                         className="w-6 h-6 flex items-center justify-center hover:bg-white rounded-md transition-colors font-bold"
                                                     >
                                                         +
@@ -78,8 +87,12 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                                 <div className="flex items-center gap-3">
                                                     <span className="font-black text-primary">Rs. {(item.price * item.quantity).toLocaleString()}</span>
                                                     <button
-                                                        onClick={() => removeItem(item.id)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeItem(item.id);
+                                                        }}
                                                         className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                        title="Remove item"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>

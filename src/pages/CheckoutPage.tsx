@@ -75,16 +75,17 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
             if (!user?.id) throw new Error('User not logged in');
 
             // 1. Create the order in the backend
-            const response = await fetch('http://localhost:5000/api/orders/create', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/orders/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: user.id,
-                    items: items.map(item => ({ id: item.id, quantity: item.quantity, price: item.price })),
+                    items: items.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price })),
                     total: finalTotal,
                     shippingAddress: `${formData.address}, ${formData.city}`,
                     phone: formData.phone,
-                    paymentMethod: formData.paymentMethod
+                    paymentMethod: formData.paymentMethod,
+                    customerName: formData.fullName
                 })
             });
 
@@ -93,7 +94,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
             setCreatedOrderId(orderData.orderId);
 
             // 2. Initiate Payment
-            const paymentResponse = await fetch('http://localhost:5000/api/payment/initiate', {
+            const paymentResponse = await fetch(`${import.meta.env.VITE_API_URL}/payment/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -194,6 +195,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         <label className="text-xs font-black uppercase tracking-widest opacity-30">Full Name</label>
                                         <input
                                             type="text"
+                                            id="fullName"
+                                            name="fullName"
                                             value={formData.fullName}
                                             onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
@@ -203,6 +206,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         <label className="text-xs font-black uppercase tracking-widest opacity-30">Phone Number</label>
                                         <input
                                             type="tel"
+                                            id="phone"
+                                            name="phone"
                                             placeholder="+92 3XX XXXXXXX"
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
@@ -212,6 +217,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         <label className="text-xs font-black uppercase tracking-widest opacity-30">Address</label>
                                         <input
                                             type="text"
+                                            id="address"
+                                            name="address"
                                             placeholder="Street address, Apartment, etc."
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
@@ -221,6 +228,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         <label className="text-xs font-black uppercase tracking-widest opacity-30">City</label>
                                         <input
                                             type="text"
+                                            id="city"
+                                            name="city"
                                             onChange={e => setFormData({ ...formData, city: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
                                         />
@@ -379,7 +388,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                             {items.map(item => (
                                 <div key={item.id} className="flex gap-4">
                                     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-foreground/5 flex-shrink-0">
-                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                        {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
                                     </div>
                                     <div className="flex-grow min-w-0">
                                         <p className="font-bold text-sm truncate">{item.name}</p>

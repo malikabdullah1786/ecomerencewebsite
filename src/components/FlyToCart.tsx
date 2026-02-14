@@ -32,7 +32,7 @@ export const FlyToCart = ({ image, startPos, onComplete }: FlyToCartProps) => {
                 onAnimationComplete={onComplete}
                 className="w-32 h-32 rounded-2xl overflow-hidden shadow-2xl border-4 border-primary"
             >
-                <img src={image} alt="flying product" className="w-full h-full object-cover" />
+                {image && <img src={image} alt="flying product" className="w-full h-full object-cover" />}
             </motion.div>
         </AnimatePresence>
     );

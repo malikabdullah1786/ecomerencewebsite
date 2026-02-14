@@ -12,6 +12,8 @@ export interface Product {
     created_at: string;
     is_returnable?: boolean;
     merchant_id?: string;
+    description?: string;
+    image_urls?: string[];
 }
 
 export const useProducts = () => {
@@ -25,6 +27,7 @@ export const useProducts = () => {
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
+                .is('deleted_at', null) // Filter out soft-deleted products
                 .order('id', { ascending: true });
 
             if (error) throw error;

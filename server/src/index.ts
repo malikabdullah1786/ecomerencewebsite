@@ -3,19 +3,17 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+dotenv.config();
 import { createClient } from '@supabase/supabase-js';
 
 import ordersRouter from './routes/orders';
 import paymentRouter from './routes/payment';
 import shippingRouter from './routes/shipping';
 import productsRouter from './routes/products';
-
-dotenv.config();
+import { supabase } from './lib/supabase';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 app.use(helmet());
 app.use(cors({
@@ -35,6 +33,35 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/products', productsRouter);
+
+// Secure Password Update Endpoint (Bypasses Client Auth Quirks)
+app.post('/api/update-password', async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Unauthorized: No token provided' });
+
+        const { password } = req.body;
+        if (!password || password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+
+        // Verify User
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) {
+            return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        }
+
+        // Admin Update (Service Role)
+        const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, { password });
+
+        if (updateError) throw updateError;
+
+        res.json({ success: true, message: 'Password updated successfully' });
+    } catch (error: any) {
+        console.error('Password Update Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // Seed Endpoint to ensure 8+ products
 app.post('/api/setup/seed', async (req, res) => {
