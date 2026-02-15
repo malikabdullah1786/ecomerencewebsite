@@ -192,44 +192,49 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest opacity-30">Full Name</label>
+                                        <label htmlFor="fullName" className="text-xs font-black uppercase tracking-widest opacity-30">Full Name</label>
                                         <input
                                             type="text"
                                             id="fullName"
                                             name="fullName"
+                                            autoComplete="name"
+                                            placeholder="John Doe"
                                             value={formData.fullName}
                                             onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest opacity-30">Phone Number</label>
+                                        <label htmlFor="phone" className="text-xs font-black uppercase tracking-widest opacity-30">Phone Number</label>
                                         <input
                                             type="tel"
                                             id="phone"
                                             name="phone"
+                                            autoComplete="tel"
                                             placeholder="+92 3XX XXXXXXX"
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                     <div className="col-span-2 space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest opacity-30">Address</label>
+                                        <label htmlFor="address" className="text-xs font-black uppercase tracking-widest opacity-30">Address</label>
                                         <input
                                             type="text"
                                             id="address"
                                             name="address"
+                                            autoComplete="street-address"
                                             placeholder="Street address, Apartment, etc."
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-black uppercase tracking-widest opacity-30">City</label>
+                                        <label htmlFor="city" className="text-xs font-black uppercase tracking-widest opacity-30">City</label>
                                         <input
                                             type="text"
                                             id="city"
                                             name="city"
+                                            autoComplete="address-level2"
                                             onChange={e => setFormData({ ...formData, city: e.target.value })}
                                             className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
                                         />
