@@ -22,7 +22,8 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                     email,
                     password,
                     options: {
-                        data: { full_name: fullName }
+                        data: { full_name: fullName },
+                        emailRedirectTo: window.location.origin
                     }
                 });
                 if (error) throw error;
