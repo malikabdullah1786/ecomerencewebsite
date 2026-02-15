@@ -130,19 +130,34 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-center space-y-6"
+                    className="text-center space-y-8 flex flex-col items-center max-w-lg mx-auto bg-white/5 p-10 rounded-[3rem] border border-white/10 backdrop-blur-md shadow-2xl"
                 >
-                    <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto">
-                        <CheckCircle2 className="w-12 h-12" />
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+                        className="w-32 h-32 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-500/20"
+                    >
+                        <CheckCircle2 className="w-16 h-16" />
+                    </motion.div>
+
+                    <div className="space-y-4">
+                        <h1 className="text-5xl font-black tracking-tighter text-white">Order Confirmed!</h1>
+                        <p className="text-lg opacity-60 font-medium">Thank you for shopping. Your order has been placed successfully.</p>
                     </div>
-                    <h1 className="text-4xl font-black tracking-tighter">Order Confirmed!</h1>
-                    <p className="opacity-50">Thank you for shopping. Your order has been placed.</p>
-                    {createdOrderId && <p className="text-xl font-black text-primary">Order ID: #{createdOrderId}</p>}
+
+                    {createdOrderId && (
+                        <div className="bg-white/5 py-4 px-8 rounded-2xl border border-white/10">
+                            <p className="text-sm uppercase tracking-widest opacity-50 mb-1">Order ID</p>
+                            <p className="text-3xl font-black text-primary font-mono">#{createdOrderId}</p>
+                        </div>
+                    )}
+
                     <button
                         onClick={() => window.location.hash = ''}
-                        className="bg-primary text-white font-black px-10 py-4 rounded-2xl hover:scale-105 transition-transform"
+                        className="bg-primary hover:bg-primary/90 text-white font-black px-12 py-5 rounded-2xl hover:scale-105 transition-all shadow-xl shadow-primary/20"
                     >
-                        Return to Home
+                        Continue Shopping
                     </button>
                 </motion.div>
             </div>

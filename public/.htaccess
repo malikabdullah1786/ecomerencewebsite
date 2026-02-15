@@ -14,6 +14,6 @@
 </IfModule>
 
 <IfModule mod_headers.c>
-  Header set Content-Security-Policy "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://85.211.250.189:5000 https://85.211.250.189:5000 http://localhost:5000"
+  Header set Content-Security-Policy "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.tarzify.com http://localhost:5000"
   Header set X-Content-Type-Options "nosniff"
 </IfModule>

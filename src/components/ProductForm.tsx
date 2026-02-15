@@ -18,7 +18,7 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
         price: '',
         category: '',
         stock: '',
-        image_url: '',
+        image_urls_input: '',
         is_returnable: true
     });
 
@@ -26,6 +26,12 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
         e.preventDefault();
         setLoading(true);
         try {
+            const urls = formData.image_urls_input.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+
+            if (urls.length === 0) {
+                throw new Error('At least one image URL is required');
+            }
+
             const { error } = await supabase
                 .from('products')
                 .insert({
@@ -35,7 +41,8 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                     price: parseFloat(formData.price),
                     category: formData.category,
                     stock: parseInt(formData.stock),
-                    image_url: formData.image_url,
+                    image_url: urls[0], // First image as main image
+                    image_urls: urls,
                     is_returnable: formData.is_returnable
                 });
 
@@ -59,9 +66,9 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
             <motion.div
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
-                className="bg-background rounded-3xl w-full max-w-lg overflow-hidden border border-white/10 shadow-2xl"
+                className="bg-background rounded-3xl w-full max-w-lg overflow-hidden border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-hide"
             >
-                <div className="p-6 border-b border-white/5 flex items-center justify-between bg-foreground/5">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between bg-foreground/5 sticky top-0 backdrop-blur-md z-10">
                     <h2 className="text-xl font-black">Add New Product</h2>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                         <X className="w-5 h-5" />
@@ -139,14 +146,14 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                             </label>
                         </div>
                         <div>
-                            <label className="text-xs font-black uppercase tracking-widest opacity-50 block mb-2">Image URL</label>
-                            <input
+                            <label className="text-xs font-black uppercase tracking-widest opacity-50 block mb-2">Image URLs (One per line)</label>
+                            <textarea
                                 required
-                                type="url"
-                                value={formData.image_url}
-                                onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                                className="w-full bg-foreground/5 border-none rounded-xl p-4 outline-none focus:ring-2 ring-primary/30"
-                                placeholder="https://..."
+                                rows={4}
+                                value={formData.image_urls_input}
+                                onChange={e => setFormData({ ...formData, image_urls_input: e.target.value })}
+                                className="w-full bg-foreground/5 border-none rounded-xl p-4 outline-none focus:ring-2 ring-primary/30 font-mono text-xs"
+                                placeholder="https://image1.jpg&#10;https://image2.jpg"
                             />
                         </div>
                     </div>

@@ -18,6 +18,7 @@ import { TrackOrder } from './components/TrackOrder';
 import { ProfilePage } from './pages/ProfilePage';
 import { PolicyPage } from './pages/PolicyPage';
 import { Footer } from './components/Footer';
+import { SEO } from './components/SEO';
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -87,7 +88,7 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [role]);
 
-  const handleProductFly = (_e: React.MouseEvent) => {
+  const handleProductFly = () => {
     // We can re-enable FlyToCart logic if needed, but keeping it simple for now
     setIsCartOpen(true);
   };
@@ -102,7 +103,7 @@ function App() {
       <ProductDetails
         productId={viewProductId}
         onBack={() => window.location.hash = ''}
-        onFly={(e) => handleProductFly(e)}
+        onFly={() => handleProductFly()}
       />
     );
 
@@ -168,7 +169,7 @@ function App() {
                 price={product.price}
                 image={product.image_url}
                 category={product.category}
-                onFly={(e) => handleProductFly(e)}
+                onFly={() => handleProductFly()}
               />
             ))}
           </div>
@@ -180,6 +181,7 @@ function App() {
   return (
     <div className="min-h-screen bg-background selection:bg-primary selection:text-white overflow-x-hidden">
       <Navbar onCartClick={() => setIsCartOpen(true)} onLoginClick={() => setShowAuth(true)} onSearch={setSearchQuery} />
+      <SEO />
       {renderContent()}
       <Footer />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />

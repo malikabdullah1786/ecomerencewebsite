@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useProducts } from '../hooks/useProducts';
 import { useCartStore } from '../stores/useCartStore';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
-import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, RefreshCcw, Send, MessageCircle } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, RefreshCcw, Send, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SEO } from '../components/SEO';
 
 interface Review {
     id: number;
@@ -27,13 +28,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     const [submitting, setSubmitting] = useState(false);
     const [loadingReviews, setLoadingReviews] = useState(true);
 
-    useEffect(() => {
-        if (productId) {
-            fetchReviews();
-        }
-    }, [productId]);
-
-    const fetchReviews = async () => {
+    const fetchReviews = useCallback(async () => {
         setLoadingReviews(true);
         try {
             const { data, error } = await supabase
@@ -59,7 +54,13 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         } finally {
             setLoadingReviews(false);
         }
-    };
+    }, [productId]);
+
+    useEffect(() => {
+        if (productId) {
+            fetchReviews();
+        }
+    }, [productId, fetchReviews]);
 
     const handleSubmitReview = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,8 +84,8 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             setNewComment('');
             fetchReviews();
             alert('Review submitted successfully!');
-        } catch (err: any) {
-            alert('Error: ' + err.message);
+        } catch (err) {
+            alert('Error: ' + (err as Error).message);
         } finally {
             setSubmitting(false);
         }
@@ -102,12 +103,30 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         ? product.image_urls
         : [product.image_url];
 
+    const handleNextImage = () => {
+        const currentIndex = images.indexOf(activeImage);
+        const nextIndex = (currentIndex + 1) % images.length;
+        setActiveImage(images[nextIndex]);
+    };
+
+    const handlePrevImage = () => {
+        const currentIndex = images.indexOf(activeImage);
+        const prevIndex = (currentIndex - 1 + images.length) % images.length;
+        setActiveImage(images[prevIndex]);
+    };
+
     const avgRating = reviews.length > 0
         ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
         : '0.0';
 
     return (
         <div className="min-h-screen bg-background pt-24 pb-24 px-4 sm:px-6">
+            <SEO
+                title={product.name}
+                description={product.description?.substring(0, 160) || `Buy ${product.name} at Tarzify.`}
+                image={product.image_url}
+                type="product"
+            />
             <div className="max-w-7xl mx-auto">
                 <button onClick={onBack} className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity mb-6 sm:mb-8 font-black uppercase tracking-widest text-[10px] sm:text-xs">
                     <ArrowLeft className="w-4 h-4" />
@@ -123,7 +142,26 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             className="aspect-[4/5] glass rounded-[2rem] sm:rounded-[3rem] overflow-hidden relative group shadow-2xl"
                         >
                             {activeImage && <img src={activeImage} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />}
-                            <button className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 sm:p-4 glass rounded-full hover:scale-110 transition-transform">
+
+                            {/* Navigation Arrows */}
+                            {images.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 glass rounded-full hover:scale-110 transition-transform z-10 opacity-0 group-hover:opacity-100"
+                                    >
+                                        <ChevronLeft className="w-6 h-6" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 glass rounded-full hover:scale-110 transition-transform z-10 opacity-0 group-hover:opacity-100"
+                                    >
+                                        <ChevronRight className="w-6 h-6" />
+                                    </button>
+                                </>
+                            )}
+
+                            <button className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 sm:p-4 glass rounded-full hover:scale-110 transition-transform z-20">
                                 <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
                             </button>
                         </motion.div>
