@@ -118,7 +118,7 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
                             <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px 20px; border-radius: 4px; margin-bottom: 30px;">
                                 <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">
                                     <strong style="color: #ff9800;">📦 Track Your Order</strong><br/>
-                                    You can track your order status anytime at <a href="https://tarzify.com/track" style="color: #ff3366; text-decoration: none; font-weight: 600;">tarzify.com/track</a> using your Order ID.
+                                    You can track your order status anytime at <a href="https://tarzify.com/#track-order" style="color: #ff3366; text-decoration: none; font-weight: 600;">tarzify.com/#track-order</a> using your Order ID.
                                 </p>
                             </div>
 
