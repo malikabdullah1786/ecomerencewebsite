@@ -29,7 +29,7 @@ app.use(helmet({
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             "script-src": scriptSrcDirectives,
             "img-src": ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*.unsplash.com", "https://api.qrserver.com"],
-            "connect-src": ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://*.cloudinary.com", "https://tarzify.com", "https://85.211.250.189:5000"],
+            "connect-src": ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://*.cloudinary.com", "https://tarzify.com", "https://*.tarzify.com", "https://backend.tarzify.com"],
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             "font-src": ["'self'", "https://fonts.gstatic.com"]
         }
@@ -39,6 +39,8 @@ app.use(cors({
     origin: [
         'https://tarzify.com',
         'https://www.tarzify.com',
+        'https://backend.tarzify.com',
+        'https://tarzify-ecommerce.vercel.app', // Added common Vercel possibilities
         'http://localhost:5173',
         'http://localhost:4173',
         'http://localhost:3000'
