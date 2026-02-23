@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Lenis from '@studio-freight/lenis';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { FlashSaleBanner } from './components/FlashSaleBanner';
@@ -19,6 +19,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { PolicyPage } from './pages/PolicyPage';
 import { Footer } from './components/Footer';
 import { SEO } from './components/SEO';
+import { ToastContainer } from './components/ToastContainer';
+import { slugify } from './lib/slugify';
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -69,7 +71,6 @@ function App() {
       setShowAdmin(hash === '#admin' && role === 'admin');
       setShowMerchant(hash === '#merchant' && (role === 'merchant' || role === 'admin'));
       setShowCheckout(hash === '#checkout');
-      setShowCheckout(hash === '#checkout');
       setShowProfile(hash === '#profile');
       setShowTrackOrder(hash === '#track-order');
 
@@ -78,7 +79,13 @@ function App() {
       setShowPolicy(matchedPolicy ? (matchedPolicy === 'shipping-policy' ? 'shipping' : matchedPolicy) : null);
 
       if (hash.startsWith('#product/')) {
-        setViewProductId(parseInt(hash.split('/')[1]));
+        const slug = hash.split('/').slice(1).join('/');
+        const numericId = parseInt(slug);
+        if (!isNaN(numericId) && String(numericId) === slug) {
+          setViewProductId(numericId);
+        } else {
+          // Slug resolution happens in next effect when products load
+        }
       } else {
         setViewProductId(null);
       }
@@ -87,6 +94,19 @@ function App() {
     handleHashChange();
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [role]);
+
+  // Second effect: Resolve slugs once products are available
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#product/') && products.length > 0) {
+      const slug = hash.split('/').slice(1).join('/');
+      const numericId = parseInt(slug);
+      if (isNaN(numericId) || String(numericId) !== slug) {
+        const matched = products.find(p => slugify(p.name) === slug);
+        if (matched) setViewProductId(matched.id);
+      }
+    }
+  }, [products, window.location.hash]);
 
   const handleProductFly = () => {
     // We can re-enable FlyToCart logic if needed, but keeping it simple for now
@@ -99,13 +119,26 @@ function App() {
     if (showAdmin && role === 'admin') return <AdminDashboard />;
     if (showMerchant && (role === 'merchant' || role === 'admin')) return <MerchantDashboard />;
 
-    if (viewProductId) return (
-      <ProductDetails
-        productId={viewProductId}
-        onBack={() => window.location.hash = ''}
-        onFly={() => handleProductFly()}
-      />
-    );
+    if (viewProductId) {
+      const product = products.find(p => p.id === viewProductId);
+
+      if (loading && !product) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+            <p className="font-black uppercase tracking-tighter opacity-30 italic">Finding Product...</p>
+          </div>
+        );
+      }
+
+      return (
+        <ProductDetails
+          productId={viewProductId}
+          onBack={() => window.location.hash = ''}
+          onFly={() => handleProductFly()}
+        />
+      );
+    }
 
     if (showProfile && user) return <ProfilePage />;
 
@@ -190,6 +223,7 @@ function App() {
       {showTrackOrder && <TrackOrder onClose={() => window.location.hash = ''} />}
       {showAuth && !user && <AuthPage onClose={() => setShowAuth(false)} />}
       <FomoPopups />
+      <ToastContainer />
     </div>
   );
 }

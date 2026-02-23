@@ -7,6 +7,7 @@ interface CartItem {
     price: number;
     image: string;
     quantity: number;
+    stock: number; // Current available stock
 }
 
 interface CartState {
@@ -25,14 +26,21 @@ export const useCartStore = create<CartState>()(
             addItem: (product) => {
                 const currentItems = get().items;
                 const existingItem = currentItems.find(item => item.id === product.id);
-                let newItems;
+                const availableStock = product.stock ?? 0;
 
+                if (availableStock <= 0) return;
+
+                let newItems;
                 if (existingItem) {
+                    if (existingItem.quantity >= availableStock) {
+                        alert(`Only ${availableStock} units available in stock.`);
+                        return;
+                    }
                     newItems = currentItems.map(item =>
                         item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
                     );
                 } else {
-                    newItems = [...currentItems, { ...product, quantity: 1 }];
+                    newItems = [...currentItems, { ...product, quantity: 1, stock: availableStock }];
                 }
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
             },
@@ -42,13 +50,20 @@ export const useCartStore = create<CartState>()(
             },
             updateQuantity: (id, change) => {
                 const currentItems = get().items;
-                const newItems = currentItems.map(item => {
-                    if (item.id === id) {
-                        const newQuantity = Math.max(1, item.quantity + change);
-                        return { ...item, quantity: newQuantity };
-                    }
-                    return item;
-                });
+                const item = currentItems.find(i => i.id === id);
+                if (!item) return;
+
+                const newQuantity = item.quantity + change;
+                if (newQuantity > item.stock) {
+                    alert(`Only ${item.stock} units available.`);
+                    return;
+                }
+
+                if (newQuantity < 1) return;
+
+                const newItems = currentItems.map(i =>
+                    i.id === id ? { ...i, quantity: newQuantity } : i
+                );
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
             },
             clearCart: () => set({ items: [], total: 0 }),

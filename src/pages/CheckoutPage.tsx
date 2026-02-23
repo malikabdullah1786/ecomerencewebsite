@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, CreditCard, Truck, MapPin, CheckCircle2, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useToastStore } from '../stores/useToastStore';
 
 const STEPS = ['Shipping', 'Delivery', 'Payment'];
 
@@ -65,12 +66,20 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
     const handleNext = () => {
         // Step 0: validate phone + address before advancing
         if (currentStep === 0) {
+            if (!formData.fullName.trim()) {
+                setStep0Error('Full name is required.');
+                return;
+            }
             if (!formData.phone.trim()) {
                 setStep0Error('Phone number is required.');
                 return;
             }
             if (!formData.address.trim()) {
                 setStep0Error('Shipping address is required.');
+                return;
+            }
+            if (!formData.city.trim()) {
+                setStep0Error('City is required.');
                 return;
             }
             setStep0Error('');
@@ -99,7 +108,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                     shippingAddress: `${formData.address}, ${formData.city}`,
                     phone: formData.phone,
                     paymentMethod: formData.paymentMethod,
-                    customerName: formData.fullName
+                    customerName: formData.fullName,
+                    email: formData.email
                 })
             });
 
@@ -133,7 +143,12 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 setOrderComplete(true);
             }
         } catch (err: any) {
-            alert('Checkout Failed: ' + err.message);
+            const toast = useToastStore.getState();
+            if (err.message.includes('Insufficient stock')) {
+                toast.show(err.message, 'error');
+            } else {
+                toast.show('Checkout Failed: ' + err.message, 'error');
+            }
             setLoading(false);
         }
     };

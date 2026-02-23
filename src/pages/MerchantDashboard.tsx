@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Package, ShoppingBag, QrCode,
-    CheckCircle2, Clock, Truck, Plus, Edit2, Loader2, X,
-    BarChart3, Menu
+    Package, Truck, BarChart3, Plus, X, Edit2,
+    ShoppingBag, Menu,
+    Loader2,
+    Clock, CheckCircle2, QrCode, Link
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useToastStore } from '../stores/useToastStore';
 
 // Mock QR Scanner
 const QRScannerPopup = ({ onScan, onClose }: { onScan: (data: string) => void, onClose: () => void }) => (
@@ -66,6 +68,7 @@ export const MerchantDashboard = () => {
     const { user, role } = useAuthStore();
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const toast = useToastStore();
 
     // Form State
     const [newProduct, setNewProduct] = useState<ProductForm>({
@@ -90,6 +93,10 @@ export const MerchantDashboard = () => {
         shipping_proof_url: ''
     });
 
+    const [urlInput, setUrlInput] = useState('');
+    const [editUrlInput, setEditUrlInput] = useState('');
+    const [urlError, setUrlError] = useState(false);
+
     const fetchOrders = async () => {
         if (!user) return;
         const { data, error } = await supabase
@@ -102,7 +109,7 @@ export const MerchantDashboard = () => {
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Error fetching orders:', error.message);
+            toast.show('Failed to fetch orders: ' + error.message, 'error');
             return;
         }
         // Map the user data to profiles for backward compatibility
@@ -119,13 +126,21 @@ export const MerchantDashboard = () => {
 
     const handleUpdateStatus = async (orderId: number, status: string) => {
         try {
-            const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
-            if (error) throw error;
-            alert('Order status updated: ' + status.toUpperCase());
-            fetchOrders();
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/status/${orderId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.show(`Order status updated: ${status.toUpperCase()}`, 'success');
+                fetchOrders();
+            } else {
+                toast.show('Error updating status: ' + data.error, 'error');
+            }
         } catch (error: any) {
             console.error('Error updating status:', error);
-            alert('Error updating status: ' + error.message);
+            toast.show('Error updating status: ' + error.message, 'error');
         }
     };
 
@@ -192,10 +207,10 @@ export const MerchantDashboard = () => {
             if (data.success) {
                 setTrackingData(prev => ({ ...prev, shipping_proof_url: data.imageUrls[0] }));
             } else {
-                alert('Upload failed: ' + data.error);
+                toast.show('Upload failed: ' + data.error, 'error');
             }
         } catch (error) {
-            alert('Upload error');
+            toast.show('Upload error', 'error');
         } finally {
             setUploading(false);
         }
@@ -215,12 +230,14 @@ export const MerchantDashboard = () => {
             });
             const data = await res.json();
             if (data.success) {
-                alert('Tracking assigned! Status updated to Shipped.');
+                toast.show('Tracking assigned! Status updated to Shipped.', 'success');
                 setTrackingData({ orderId: null, tracking_number: '', courier_name: 'TCS', shipping_proof_url: '' });
                 fetchOrders();
+            } else {
+                toast.show('Error assigning tracking: ' + data.error, 'error');
             }
         } catch (error) {
-            alert('Error assigning tracking');
+            toast.show('Error assigning tracking', 'error');
         }
     };
 
@@ -234,18 +251,27 @@ export const MerchantDashboard = () => {
         // Animate progress bar (simulate progress while upload is in flight)
         const progressInterval = setInterval(() => {
             setUploadProgress(prev => {
-                if (prev >= 85) { clearInterval(progressInterval); return prev; }
-                return prev + Math.random() * 15;
+                if (prev >= 90) { clearInterval(progressInterval); return prev; }
+                return prev + Math.random() * 5;
             });
-        }, 180);
-
-        const formData = new FormData();
-        Array.from(files).forEach(file => formData.append('images', file));
+        }, 100);
 
         try {
+            // Convert files to base64
+            const base64Promises = Array.from(files).map(file => {
+                return new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            const base64Images = await Promise.all(base64Promises);
+
             const res = await fetch(`${import.meta.env.VITE_API_URL}/products/upload`, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ images: base64Images })
             });
             const data = await res.json();
 
@@ -267,11 +293,11 @@ export const MerchantDashboard = () => {
                     }));
                 }
             } else {
-                alert('Upload failed: ' + data.error);
+                toast.show('Upload failed: ' + data.error, 'error');
             }
         } catch (error) {
             clearInterval(progressInterval);
-            alert('Upload error. Make sure backend is running.');
+            toast.show('Upload error. Make sure backend is running.', 'error');
         } finally {
             setTimeout(() => {
                 setUploading(false);
@@ -325,12 +351,12 @@ export const MerchantDashboard = () => {
 
             if (error) throw error;
 
-            alert('Product added successfully!');
+            toast.show('Product added successfully!', 'success');
             setShowAddModal(false);
             setNewProduct({ name: '', sku: '', price: '', stock: '', category: 'Fashion', image_url: '', image_urls: [], description: '', is_returnable: true });
             refetchProducts();
         } catch (error: any) {
-            alert('Error adding product: ' + error.message);
+            toast.show('Error adding product: ' + error.message, 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -358,28 +384,29 @@ export const MerchantDashboard = () => {
 
             if (error) throw error;
 
-            alert('Product updated successfully!');
+            toast.show('Product updated successfully!', 'success');
             setEditingProduct(null);
             refetchProducts();
         } catch (error: any) {
-            alert('Error updating product: ' + error.message);
+            toast.show('Error updating product: ' + error.message, 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDeleteProduct = async (productId: number) => {
+    const handleDeleteProduct = async (id: number) => {
         if (!confirm('Are you sure you want to delete this product?')) return;
         try {
             // Soft Delete: Mark as deleted to preserve order history
             const { error } = await supabase
                 .from('products')
-                .update({ deleted_at: new Date() })
-                .eq('id', productId);
+                .update({ deleted_at: new Date().toISOString() })
+                .eq('id', id);
             if (error) throw error;
+            toast.show('Product deleted.', 'success');
             refetchProducts();
         } catch (error: any) {
-            alert('Error deleting product: ' + error.message);
+            toast.show('Error deleting product: ' + error.message, 'error');
         }
     };
 
@@ -485,38 +512,42 @@ export const MerchantDashboard = () => {
             {/* Add Modal */}
             <AnimatePresence>
                 {showAddModal && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-2xl rounded-[3rem] p-10 border border-border shadow-2xl space-y-8 max-h-[90vh] overflow-y-auto">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Add New Product</h2>
-                                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-foreground/5 rounded-full"><X /></button>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 sm:p-8">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            className="bg-background w-full max-w-2xl rounded-[3rem] p-6 sm:p-12 border border-white/10 shadow-2xl space-y-8 max-h-[90vh] overflow-y-auto relative"
+                        >
+                            <div className="flex justify-between items-center sticky top-0 bg-background/80 backdrop-blur-md z-10 py-2">
+                                <h2 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter text-foreground">Add New Product</h2>
+                                <button onClick={() => setShowAddModal(false)} className="p-3 hover:bg-foreground/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
                             </div>
-                            <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
                                 <div className="col-span-2 space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Name</label>
-                                    <input required type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Product Name</label>
+                                    <input required type="text" placeholder="e.g. Premium Leather Bag" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">SKU</label>
-                                    <input required type="text" value={newProduct.sku} onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">SKU</label>
+                                    <input required type="text" placeholder="TRZ-001" value={newProduct.sku} onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Category</label>
-                                    <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full glass border-none rounded-2xl p-4 bg-background">
-                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Category</label>
+                                    <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all cursor-pointer">
+                                        {CATEGORIES.map(c => <option key={c} value={c} className="bg-background">{c}</option>)}
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Price (Rs.)</label>
-                                    <input required type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Price (Rs.)</label>
+                                    <input required type="number" placeholder="0.00" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Stock</label>
-                                    <input required type="number" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Stock</label>
+                                    <input required type="number" min="0" placeholder="Quantity" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="col-span-2 space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Description</label>
-                                    <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full glass border-none rounded-2xl p-4 min-h-[100px]" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Description</label>
+                                    <textarea placeholder="Describe your product..." value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 min-h-[120px] outline-none transition-all resize-none" />
                                 </div>
                                 <div className="col-span-2 flex items-center gap-3 p-4 bg-foreground/5 rounded-2xl">
                                     <input type="checkbox" checked={newProduct.is_returnable} onChange={e => setNewProduct({ ...newProduct, is_returnable: e.target.checked })} className="w-5 h-5 rounded-lg accent-primary" />
@@ -529,6 +560,57 @@ export const MerchantDashboard = () => {
                                         <span className="text-xs font-bold opacity-30 mt-2">{uploading ? 'Uploading...' : 'Click to upload photos'}</span>
                                         <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
                                     </label>
+
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" />
+                                            <input
+                                                type="text"
+                                                placeholder="Paste image URL from Google/Web..."
+                                                value={urlInput}
+                                                onChange={(e) => {
+                                                    setUrlInput(e.target.value);
+                                                    setUrlError(false);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if (urlInput && !urlError) {
+                                                            setNewProduct(prev => ({ ...prev, image_urls: [...prev.image_urls, urlInput] }));
+                                                            setUrlInput('');
+                                                        }
+                                                    }
+                                                }}
+                                                className={`w-full bg-foreground/5 border-2 ${urlError ? 'border-red-500/50' : 'border-transparent focus:border-primary/30'} rounded-2xl p-4 pl-12 outline-none transition-all text-sm`}
+                                            />
+                                            <p className="text-[9px] opacity-30 mt-1 ml-2 font-black uppercase italic tracking-tighter">Press Enter to add this image</p>
+                                        </div>
+
+                                        {/* Real-time Preview */}
+                                        {urlInput && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="p-4 bg-foreground/5 rounded-[2rem] border border-foreground/10 flex items-center gap-4"
+                                            >
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-foreground/10">
+                                                    <img
+                                                        src={urlInput}
+                                                        alt="URL Preview"
+                                                        className="w-full h-full object-contain"
+                                                        onError={() => setUrlError(true)}
+                                                        onLoad={() => setUrlError(false)}
+                                                    />
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Live Preview</p>
+                                                    <p className={`text-xs font-black italic uppercase ${urlError ? 'text-red-500' : 'text-primary'}`}>
+                                                        {urlError ? '⚠️ Broken or invalid link' : '✨ Looks good! Press Enter'}
+                                                    </p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </div>
                                     {/* Upload Progress Bar */}
                                     {uploading && (
                                         <div className="w-full bg-foreground/10 rounded-full h-2 overflow-hidden">
@@ -559,29 +641,33 @@ export const MerchantDashboard = () => {
 
                 {/* Edit Modal */}
                 {editingProduct && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-background w-full max-w-2xl rounded-[3rem] p-10 border border-border shadow-2xl space-y-8 max-h-[90vh] overflow-y-auto">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Edit Product</h2>
-                                <button onClick={() => setEditingProduct(null)} className="p-2 hover:bg-foreground/5 rounded-full"><X /></button>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl sm:p-8">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            className="bg-background w-full max-w-2xl rounded-[3rem] p-6 sm:p-12 border border-white/10 shadow-2xl space-y-8 max-h-[90vh] overflow-y-auto relative"
+                        >
+                            <div className="flex justify-between items-center sticky top-0 bg-background/80 backdrop-blur-md z-10 py-2">
+                                <h2 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter text-foreground">Edit Product</h2>
+                                <button onClick={() => setEditingProduct(null)} className="p-3 hover:bg-foreground/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
                             </div>
-                            <form onSubmit={handleUpdateProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <form onSubmit={handleUpdateProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
                                 <div className="col-span-2 space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Name</label>
-                                    <input required type="text" value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Product Name</label>
+                                    <input required type="text" value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Price</label>
-                                    <input required type="number" value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Price (Rs.)</label>
+                                    <input required type="number" value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Stock</label>
-                                    <input required type="number" value={editingProduct.stock} onChange={e => setEditingProduct({ ...editingProduct, stock: e.target.value })} className="w-full glass border-none rounded-2xl p-4" />
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Stock</label>
+                                    <input required type="number" min="0" value={editingProduct.stock} onChange={e => setEditingProduct({ ...editingProduct, stock: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest opacity-30">Category</label>
-                                    <select value={editingProduct.category} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} className="w-full glass border-none rounded-2xl p-4 bg-background">
-                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Category</label>
+                                    <select value={editingProduct.category} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all cursor-pointer">
+                                        {CATEGORIES.map(c => <option key={c} value={c} className="bg-background">{c}</option>)}
                                     </select>
                                 </div>
                                 <div className="col-span-2 space-y-2">
@@ -599,6 +685,57 @@ export const MerchantDashboard = () => {
                                         <span className="text-xs font-bold opacity-30 mt-1">{uploading ? 'Uploading...' : 'Add more photos'}</span>
                                         <input type="file" multiple accept="image/*" onChange={(e) => handleImageUpload(e, true)} className="hidden" disabled={uploading} />
                                     </label>
+
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" />
+                                            <input
+                                                type="text"
+                                                placeholder="Paste image URL from Google/Web..."
+                                                value={editUrlInput}
+                                                onChange={(e) => {
+                                                    setEditUrlInput(e.target.value);
+                                                    setUrlError(false);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if (editUrlInput && !urlError) {
+                                                            setEditingProduct(prev => prev ? ({ ...prev, image_urls: [...(prev.image_urls || []), editUrlInput] }) : null);
+                                                            setEditUrlInput('');
+                                                        }
+                                                    }
+                                                }}
+                                                className={`w-full bg-foreground/5 border-2 ${urlError ? 'border-red-500/50' : 'border-transparent focus:border-primary/30'} rounded-2xl p-4 pl-12 outline-none transition-all text-sm`}
+                                            />
+                                            <p className="text-[9px] opacity-30 mt-1 ml-2 font-black uppercase italic tracking-tighter">Press Enter to add this image</p>
+                                        </div>
+
+                                        {/* Real-time Preview for Edit */}
+                                        {editUrlInput && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="p-4 bg-foreground/5 rounded-[2rem] border border-foreground/10 flex items-center gap-4"
+                                            >
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-foreground/10">
+                                                    <img
+                                                        src={editUrlInput}
+                                                        alt="URL Preview"
+                                                        className="w-full h-full object-contain"
+                                                        onError={() => setUrlError(true)}
+                                                        onLoad={() => setUrlError(false)}
+                                                    />
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Live Preview</p>
+                                                    <p className={`text-xs font-black italic uppercase ${urlError ? 'text-red-500' : 'text-primary'}`}>
+                                                        {urlError ? '⚠️ Broken or invalid link' : '✨ Looks good! Press Enter'}
+                                                    </p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </div>
                                     {/* Upload Progress Bar */}
                                     {uploading && (
                                         <div className="w-full bg-foreground/10 rounded-full h-2 overflow-hidden">
@@ -706,7 +843,10 @@ export const MerchantDashboard = () => {
                                 <div className="flex justify-between pt-4 border-t border-foreground/5">
                                     <div>
                                         <p className="text-xs font-black uppercase opacity-30">Stock</p>
-                                        <p className="text-xl font-black">{product.stock}</p>
+                                        <p className={`text-xl font-black ${product.stock < 0 ? 'text-red-500' : ''}`}>
+                                            {product.stock}
+                                            {product.stock < 0 && <span className="text-[10px] ml-2 uppercase font-black tracking-tighter">(Error)</span>}
+                                        </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs font-black uppercase opacity-30">Price</p>

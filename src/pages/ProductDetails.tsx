@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, RefreshCcw, Send, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SEO } from '../components/SEO';
+import { useToastStore } from '../stores/useToastStore';
 
 interface Review {
     id: number;
@@ -35,7 +36,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                 .from('reviews')
                 .select(`
                     *,
-                    user:user_id (
+                    profiles:user_id (
                         full_name
                     )
                 `)
@@ -43,12 +44,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            // Map the user data to profiles for backward compatibility
-            const reviewsWithProfiles = data?.map(review => ({
-                ...review,
-                profiles: review.user
-            })) || [];
-            setReviews(reviewsWithProfiles);
+            setReviews(data || []);
         } catch (err) {
             console.error('Error fetching reviews:', err);
         } finally {
@@ -173,10 +169,12 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     }, [product, reviews]);
 
 
+    const toast = useToastStore();
+
     const handleSubmitReview = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) {
-            alert('Please login to leave a review.');
+            toast.show('Please login to leave a review.', 'info');
             return;
         }
 
@@ -184,19 +182,19 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         try {
             const { error } = await supabase
                 .from('reviews')
-                .upsert({
+                .insert({
                     product_id: productId,
                     user_id: user.id,
                     rating: newRating,
                     comment: newComment
-                }, { onConflict: 'product_id, user_id' });
+                });
 
             if (error) throw error;
             setNewComment('');
             fetchReviews();
-            alert('Review submitted successfully!');
+            toast.show('Review submitted successfully!', 'success');
         } catch (err) {
-            alert('Error: ' + (err as Error).message);
+            toast.show('Error: ' + (err as Error).message, 'error');
         } finally {
             setSubmitting(false);
         }
@@ -207,6 +205,8 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     useEffect(() => {
         if (product) setActiveImage(product.image_url);
     }, [product]);
+
+    const [zoomOrigin, setZoomOrigin] = useState({ x: 0, y: 0 });
 
     if (!product) return null;
 
@@ -230,6 +230,13 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
         : '0.0';
 
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - left) / width) * 100;
+        const y = ((e.clientY - top) / height) * 100;
+        setZoomOrigin({ x, y });
+    };
+
     return (
         <div className="min-h-screen bg-background pt-24 pb-24 px-4 sm:px-6">
             <SEO
@@ -250,22 +257,38 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="aspect-[4/5] glass rounded-[2rem] sm:rounded-[3rem] overflow-hidden relative group shadow-2xl"
+                            onMouseMove={handleMouseMove}
+                            className="aspect-[4/5] glass rounded-[2rem] sm:rounded-[3rem] overflow-hidden relative group shadow-2xl bg-white flex items-center justify-center p-4 border border-foreground/5 cursor-zoom-in"
                         >
-                            {activeImage && <img src={activeImage} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />}
+                            {activeImage && (
+                                <img
+                                    src={activeImage}
+                                    alt={product.name}
+                                    crossOrigin="anonymous"
+                                    style={{
+                                        transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                                    }}
+                                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[2.5]"
+                                />
+                            )}
+
+                            {/* Zoom Instructions */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 glass rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                <span className="text-[8px] font-black uppercase tracking-widest whitespace-nowrap">Hover to explore details</span>
+                            </div>
 
                             {/* Navigation Arrows */}
                             {images.length > 1 && (
                                 <>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 glass rounded-full hover:scale-110 transition-transform z-10 opacity-0 group-hover:opacity-100"
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 glass rounded-full hover:scale-110 transition-transform z-20 opacity-0 group-hover:opacity-100"
                                     >
                                         <ChevronLeft className="w-6 h-6" />
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 glass rounded-full hover:scale-110 transition-transform z-10 opacity-0 group-hover:opacity-100"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 glass rounded-full hover:scale-110 transition-transform z-20 opacity-0 group-hover:opacity-100"
                                     >
                                         <ChevronRight className="w-6 h-6" />
                                     </button>
@@ -304,7 +327,17 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 </div>
                             </div>
                             <h1 className="text-5xl md:text-6xl font-black tracking-tighter leading-none">{product.name}</h1>
-                            <p className="text-3xl font-black text-primary">Rs. {product.price.toLocaleString()}</p>
+                            <div className="flex flex-col gap-2">
+                                <p className="text-3xl font-black text-primary">Rs. {product.price.toLocaleString()}</p>
+                                <div className="flex items-center gap-1.5 text-yellow-500">
+                                    <div className="flex">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star key={i} className={`w-3.5 h-3.5 ${i < Math.round(Number(avgRating)) ? 'fill-current' : 'opacity-20'}`} />
+                                        ))}
+                                    </div>
+                                    <span className="text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {reviews.length} reviews)</span>
+                                </div>
+                            </div>
                         </div>
 
                         <p className="text-lg opacity-60 leading-relaxed font-medium">
@@ -312,6 +345,18 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         </p>
 
                         <div className="space-y-6">
+                            {/* Stock Status Indicator */}
+                            {product.stock > 0 && product.stock <= 10 && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className={`flex items-center gap-2 font-black italic uppercase tracking-tighter text-sm ${product.stock <= 3 ? 'text-red-500' : 'text-amber-500'}`}
+                                >
+                                    <div className={`w-2 h-2 rounded-full animate-pulse ${product.stock <= 3 ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                    Only {product.stock} items left in stock!
+                                </motion.div>
+                            )}
+
                             <div className="flex items-center gap-4">
                                 <div className="flex-grow flex items-center bg-foreground/5 rounded-2xl p-2">
                                     <span className="px-6 py-2 text-xs font-black uppercase opacity-30">Quantity</span>
@@ -324,13 +369,18 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
 
                             <button
                                 onClick={(e) => {
+                                    if (product.stock === 0) return;
                                     addItem(product);
                                     onFly(e);
                                 }}
-                                className="w-full py-6 bg-primary text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                disabled={product.stock === 0}
+                                className={`w-full py-6 transition-all rounded-[2rem] font-black text-xl shadow-2xl flex items-center justify-center gap-3 ${product.stock === 0
+                                    ? 'bg-foreground/20 text-foreground/40 cursor-not-allowed'
+                                    : 'bg-primary text-white shadow-primary/30 hover:scale-[1.02] active:scale-[0.98]'
+                                    }`}
                             >
                                 <ShoppingBag className="w-6 h-6" />
-                                Add to Cart
+                                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
                             </button>
                         </div>
 
@@ -416,39 +466,49 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 No reviews yet. Be the first to share your experience!
                             </div>
                         ) : (
-                            <div className="space-y-6">
-                                {reviews.map((review) => (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 20 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        key={review.id}
-                                        className="glass p-8 rounded-[2.5rem] border-white/5 space-y-4"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-black text-primary text-xs">
-                                                    {review.profiles?.full_name[0] || 'U'}
+                            <div className="space-y-6 max-h-[600px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
+                                {reviews.map((review) => {
+                                    const nameFirstChar = review.profiles?.full_name ? review.profiles.full_name[0] : 'U';
+                                    const fullName = review.profiles?.full_name || 'Anonymous';
+
+                                    return (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 20 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            key={review.id}
+                                            className="glass p-8 rounded-[2.5rem] border-white/5 space-y-4"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center font-black text-primary text-xs">
+                                                        {nameFirstChar}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-sm">{fullName}</p>
+                                                        <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest">
+                                                            {new Date(review.created_at).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-black text-sm">{review.profiles?.full_name || 'Anonymous'}</p>
-                                                    <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest">{new Date(review.created_at).toLocaleDateString()}</p>
+                                                <div className="flex gap-0.5">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star
+                                                            key={i}
+                                                            className={`w-3 h-3 ${i < review.rating ? 'text-yellow-500 fill-current' : 'text-foreground/10'}`}
+                                                        />
+                                                    ))}
                                                 </div>
                                             </div>
-                                            <div className="flex gap-0.5">
-                                                {[...Array(5)].map((_, i) => (
-                                                    <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'text-yellow-500 fill-current' : 'text-foreground/10'}`} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <p className="text-sm leading-relaxed opacity-70 font-medium italic">"{review.comment}"</p>
-                                    </motion.div>
-                                ))}
+                                            <p className="text-sm leading-relaxed opacity-70 font-medium italic">"{review.comment}"</p>
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

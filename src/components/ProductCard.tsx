@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ShoppingCart, Star } from 'lucide-react';
 import { useCartStore } from '../stores/useCartStore';
+import { slugify } from '../lib/slugify';
 
 interface ProductCardProps {
     id: number;
@@ -15,11 +16,10 @@ interface ProductCardProps {
 }
 
 export const ProductCard = (product: ProductCardProps) => {
-    const { id, name, price, image, category, rating = 0, stock = 1, onFly } = product;
+    const { id: _id, name, price, image, category, rating = 0, stock = 1, onFly } = product;
     const addItem = useCartStore((state) => state.addItem);
 
     const isOOS = stock === 0;
-    const isLowStock = stock > 0 && stock <= 5;
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -34,8 +34,8 @@ export const ProductCard = (product: ProductCardProps) => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             whileHover={{ y: -10 }}
-            onClick={() => { if (!isOOS) window.location.hash = `#product/${id}`; }}
-            className={`group relative glass rounded-3xl overflow-hidden border-white/10 flex flex-col h-full ${isOOS ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+            onClick={() => { window.location.hash = `#product/${slugify(name)}`; }}
+            className={`group relative glass rounded-3xl overflow-hidden border-white/10 flex flex-col h-full cursor-pointer ${isOOS ? 'opacity-90' : ''}`}
         >
             {/* Image Container */}
             <div className="relative aspect-[4/5] overflow-hidden bg-foreground/5 group">
@@ -43,13 +43,14 @@ export const ProductCard = (product: ProductCardProps) => {
                     <img
                         src={image}
                         alt={name}
+                        crossOrigin="anonymous"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                 )}
 
                 {/* OOS Overlay */}
                 {isOOS && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-20">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-20">
                         <span className="px-6 py-2 bg-red-500/90 text-white text-xs font-black uppercase tracking-widest rounded-full shadow-lg border border-red-400/30">
                             Out of Stock
                         </span>
@@ -104,14 +105,14 @@ export const ProductCard = (product: ProductCardProps) => {
                     </div>
                 </div>
 
-                {/* Category Badge */}
+                {/* Category & Stock Badges */}
                 <div className="absolute top-2 left-2 sm:top-4 sm:left-4 flex flex-col gap-1.5 z-10">
                     <span className="px-2 py-0.5 sm:px-4 sm:py-1.5 glass text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-white rounded-full shadow-lg">
                         {category}
                     </span>
-                    {isLowStock && (
-                        <span className="px-2 py-0.5 sm:px-3 sm:py-1 bg-amber-500/90 text-white text-[7px] sm:text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                            Low Stock
+                    {stock > 0 && stock <= 10 && (
+                        <span className={`px-2 py-0.5 sm:px-3 sm:py-1 text-white text-[7px] sm:text-[9px] font-black uppercase tracking-widest rounded-full shadow-lg border border-white/20 backdrop-blur-md ${stock <= 3 ? 'bg-red-500/90' : 'bg-amber-500/90'}`}>
+                            Only {stock} Left{stock <= 3 ? '!' : ''}
                         </span>
                     )}
                 </div>

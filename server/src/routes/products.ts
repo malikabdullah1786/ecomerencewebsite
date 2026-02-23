@@ -1,31 +1,44 @@
 import express from 'express';
-import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { supabase } from '../lib/supabase';
+
+import dotenv from 'dotenv';
+dotenv.config();
 
 const router = express.Router();
 
 // Cloudinary Config
-cloudinary.config({
+const cloudinaryConfig = {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dtaonueid',
     api_key: process.env.CLOUDINARY_API_KEY || '895755865122633',
     api_secret: process.env.CLOUDINARY_API_SECRET || 'GXSLkzUOZjxmc93FtnzaY5MuLhs'
+};
+
+console.log('[Cloudinary] Attempting initialization with:', {
+    cloud_name: cloudinaryConfig.cloud_name,
+    api_key: cloudinaryConfig.api_key,
+    has_secret: !!cloudinaryConfig.api_secret
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
+cloudinary.config(cloudinaryConfig);
 
-// Upload Endpoint (Multiple Images)
-router.post('/upload', upload.array('images', 5), async (req, res) => {
+// Upload Endpoint (Base64 Images)
+router.post('/upload', async (req, res) => {
     try {
-        const files = req.files as Express.Multer.File[];
-        if (!files || files.length === 0) throw new Error('No files uploaded');
+        const { images } = req.body; // Array of base64 strings
+        console.log(`[Upload] Received ${images?.length || 0} images`);
 
-        const uploadPromises = files.map(async (file) => {
-            const b64 = Buffer.from(file.buffer).toString('base64');
-            let dataURI = "data:" + file.mimetype + ";base64," + b64;
-            const response = await cloudinary.uploader.upload(dataURI, {
+        if (!images || !Array.isArray(images) || images.length === 0) {
+            throw new Error('No images provided in base64 format');
+        }
+
+        const uploadPromises = images.map(async (base64, idx) => {
+            console.log(`[Upload] Processing image ${idx + 1}/${images.length} (Size: ${Math.round(base64.length / 1024)} KB)`);
+            // Upload directly to Cloudinary
+            const response = await cloudinary.uploader.upload(base64, {
                 folder: 'tarzify/products'
             });
+            console.log(`[Upload] Image ${idx + 1} uploaded successfully: ${response.secure_url}`);
             return response.secure_url;
         });
 

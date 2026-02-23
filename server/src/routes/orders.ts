@@ -152,6 +152,14 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
 router.post('/create', async (req, res) => {
     const { userId, items, total, shippingAddress, phone, paymentMethod, customerName } = req.body;
 
+    // Validation: All fields mandatory
+    if (!customerName || !shippingAddress || !phone || !items || items.length === 0) {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required information. Please provide full name, address, and phone number.'
+        });
+    }
+
     const generateOrderId = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         const randomChar1 = chars.charAt(Math.floor(Math.random() * chars.length));
@@ -161,6 +169,20 @@ router.post('/create', async (req, res) => {
     };
 
     try {
+        // 1. Verify Stock for all items first
+        for (const item of items) {
+            const { data: product, error: stockErr } = await supabase
+                .from('products')
+                .select('stock, name')
+                .eq('id', item.id)
+                .single();
+
+            if (stockErr || !product) throw new Error(`Product ${item.id} not found`);
+            if (product.stock < item.quantity) {
+                throw new Error(`Insufficient stock for "${product.name}". Only ${product.stock} left.`);
+            }
+        }
+
         let order;
         let retries = 0;
         const maxRetries = 3;
@@ -176,7 +198,7 @@ router.post('/create', async (req, res) => {
                     status: 'pending',
                     shipping_address: shippingAddress,
                     phone: phone,
-                    payment_method: paymentMethod || 'fastpay',
+                    payment_method: paymentMethod || 'cod',
                     order_number: customId,
                     customer_name: customerName
                 })
@@ -212,21 +234,25 @@ router.post('/create', async (req, res) => {
         const email = userData?.user?.email;
 
         // Send Confirmation Email via Hostinger SMTP
-        if (email) {
-            // Calculate subtotal from items
+        const finalEmail = req.body.email || email; // Prefer provided email from body
+
+        if (finalEmail) {
+            console.log(`Attempting to send order email to: ${finalEmail}`);
             const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
             const shippingCost = total - subtotal;
-
-            await sendOrderEmail(email, order, items, subtotal, shippingCost, total, shippingAddress);
+            await sendOrderEmail(finalEmail, order, items, subtotal, shippingCost, total, shippingAddress);
+        } else {
+            console.warn('No email found for order notification. Skipping.');
         }
 
-        // Reduce Stock
+        // 2. Reduce Stock (Now safer because we checked above)
         for (const item of items) {
             await supabase.rpc('decrement_stock', { product_id: item.id, amount: item.quantity });
         }
 
         res.json({ success: true, orderId: order.order_number });
     } catch (error: any) {
+        console.error('Order creation error:', error);
         res.status(400).json({ success: false, error: error.message });
     }
 });

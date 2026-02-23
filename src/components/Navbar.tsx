@@ -130,7 +130,7 @@ export const Navbar = ({
                                                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                                className="absolute right-0 mt-4 w-64 glass border border-white/10 rounded-[2rem] p-4 shadow-2xl z-50 overflow-hidden"
+                                                className="absolute right-0 mt-4 w-64 bg-background/95 backdrop-blur-3xl border border-white/20 rounded-[2rem] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 overflow-hidden"
                                             >
                                                 <div className="p-4 border-b border-white/5 space-y-1 mb-2">
                                                     <p className="text-xs font-black uppercase tracking-widest opacity-30">Account</p>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useToastStore } from '../stores/useToastStore';
 
 export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup', onClose?: () => void }) => {
     const [mode, setMode] = useState<'login' | 'signup'>(type);
@@ -27,7 +28,7 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                     }
                 });
                 if (error) throw error;
-                alert('Verification email sent!');
+                useToastStore.getState().show('Verification email sent!', 'success');
             } else {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
