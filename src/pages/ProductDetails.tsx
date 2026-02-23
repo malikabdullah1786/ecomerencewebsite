@@ -207,11 +207,14 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         try {
             const { error } = await supabase
                 .from('reviews')
-                .insert({
-                    product_id: productId,
+                .upsert({
+                    product_id: Number(productId),
                     user_id: user.id,
                     rating: newRating,
-                    comment: newComment
+                    comment: newComment,
+                    created_at: new Date().toISOString()
+                }, {
+                    onConflict: 'product_id,user_id'
                 });
 
             if (error) throw error;
