@@ -15,11 +15,35 @@ import { supabase } from './lib/supabase';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CSP Configuration - stricter in production
+app.use(morgan('dev'));
+
+// CORS/Security Middleware - must be at the top
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+        // Log all origins for debugging
+        console.log(`[CORS ATTEMPT] Origin: ${origin} | URL: ${req.url}`);
+
+        // Permissive check for Tarzify domains and localhost
+        if (origin.includes('tarzify.com') || origin.includes('localhost') || origin.includes('vercel.app')) {
+            res.header('Access-Control-Allow-Origin', origin);
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+            res.header('Access-Control-Allow-Credentials', 'true');
+        }
+    }
+
+    // Handle OPTIONS preflight immediately
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const scriptSrcDirectives = ["'self'", "'unsafe-inline'", "https://*.supabasedemo.com", "https://*.supabase.co"];
 if (isDevelopment) {
-    scriptSrcDirectives.push("'unsafe-eval'"); // Only allow eval in development
+    scriptSrcDirectives.push("'unsafe-eval'");
 }
 
 app.use(helmet({
@@ -29,25 +53,13 @@ app.use(helmet({
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             "script-src": scriptSrcDirectives,
             "img-src": ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*.unsplash.com", "https://api.qrserver.com"],
-            "connect-src": ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "https://*.cloudinary.com", "https://tarzify.com", "https://*.tarzify.com", "https://backend.tarzify.com"],
+            "connect-src": ["'self'", "*"],
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             "font-src": ["'self'", "https://fonts.gstatic.com"]
         }
     }
 }));
-app.use(cors({
-    origin: [
-        'https://tarzify.com',
-        'https://www.tarzify.com',
-        'https://backend.tarzify.com',
-        'https://tarzify-ecommerce.vercel.app', // Added common Vercel possibilities
-        'http://localhost:5173',
-        'http://localhost:4173',
-        'http://localhost:3000'
-    ],
-    credentials: true
-}));
-app.use(morgan('dev'));
+
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
