@@ -32,19 +32,44 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     const fetchReviews = useCallback(async () => {
         setLoadingReviews(true);
         try {
-            const { data, error } = await supabase
+            // Step 1: Fetch reviews
+            const { data: reviewsData, error: reviewsError } = await supabase
                 .from('reviews')
-                .select(`
-                    *,
-                    profiles:user_id (
-                        full_name
-                    )
-                `)
+                .select('*')
                 .eq('product_id', productId)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            setReviews(data || []);
+            if (reviewsError) throw reviewsError;
+
+            if (!reviewsData || reviewsData.length === 0) {
+                setReviews([]);
+                return;
+            }
+
+            // Step 2: Fetch profiles for these users
+            const userIds = Array.from(new Set(reviewsData.map(r => r.user_id)));
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('id', userIds);
+
+            if (profilesError) {
+                console.warn('Error fetching profiles, falling back to Anonymous:', profilesError);
+            }
+
+            // Create a lookup map
+            const profileMap = (profilesData || []).reduce((acc: any, p) => {
+                acc[p.id] = p.full_name;
+                return acc;
+            }, {});
+
+            // Step 3: Combine data
+            const enrichedReviews = reviewsData.map(r => ({
+                ...r,
+                profiles: profileMap[r.user_id] ? { full_name: profileMap[r.user_id] } : null
+            }));
+
+            setReviews(enrichedReviews);
         } catch (err) {
             console.error('Error fetching reviews:', err);
         } finally {
@@ -499,7 +524,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                                     ))}
                                                 </div>
                                             </div>
-                                            <p className="text-sm leading-relaxed opacity-70 font-medium italic">"{review.comment}"</p>
+                                            <p className="text-sm leading-relaxed opacity-80 font-medium">{review.comment}</p>
                                         </motion.div>
                                     );
                                 })}
