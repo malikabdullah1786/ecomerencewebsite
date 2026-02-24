@@ -84,13 +84,12 @@ function App() {
 
       // Product Details routing
       if (hash.startsWith('#product/')) {
-        const path = hash.replace('#product/', '');
-        const segments = path.split('-');
-        const skuFromUrl = segments[segments.length - 1].toUpperCase();
+        const path = hash.replace('#product/', '').toUpperCase();
 
         if (products.length > 0) {
-          // 1. Try SKU match
-          const matched = products.find(p => p.sku.toUpperCase() === skuFromUrl);
+          // 1. Try match by suffix (the most robust way to find the SKU at the end)
+          const matched = products.find(p => path.endsWith(p.sku.toUpperCase()));
+
           if (matched) {
             setViewProductId(matched.id);
           } else {
