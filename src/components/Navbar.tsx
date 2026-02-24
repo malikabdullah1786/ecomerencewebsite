@@ -30,20 +30,20 @@ export const Navbar = ({
         <motion.header
             initial={{ y: -100 }}
             animate={{ y: 0 }}
-            className="fixed top-0 left-0 w-full z-50 px-6 py-4 bg-transparent"
+            className="fixed top-0 left-0 w-full z-50 px-2 sm:px-6 py-2 sm:py-4 bg-transparent"
         >
-            <nav className="max-w-7xl mx-auto glass rounded-full px-6 py-3 flex items-center justify-between shadow-2xl border-white/10">
+            <nav className="max-w-7xl mx-auto glass rounded-full px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between shadow-2xl border-white/10">
                 <div className="flex items-center gap-8">
                     <div
                         onClick={() => window.location.reload()}
-                        className="flex items-center gap-3 cursor-pointer group"
+                        className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
                     >
                         <img
                             src="/logo.png"
                             alt="TARZIFY Logo"
-                            className="h-8 md:h-10 w-8 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
+                            className="h-7 md:h-10 w-7 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
                         />
-                        <span className="text-2xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
+                        <span className="text-xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
                             TARZIFY
                         </span>
                     </div>

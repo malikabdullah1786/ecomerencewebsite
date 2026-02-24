@@ -595,13 +595,13 @@ export const MerchantDashboard = () => {
                                         </div>
 
                                         {/* Real-time Preview */}
-                                        {urlInput && (
+                                        {(urlInput && urlInput.startsWith('http')) && (
                                             <motion.div
                                                 initial={{ opacity: 0, y: -10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="p-4 bg-foreground/5 rounded-[2rem] border border-foreground/10 flex items-center gap-4"
                                             >
-                                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-foreground/10">
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-foreground/10 flex items-center justify-center relative group">
                                                     <img
                                                         src={urlInput}
                                                         alt="URL Preview"
@@ -609,12 +609,24 @@ export const MerchantDashboard = () => {
                                                         onError={() => setUrlError(true)}
                                                         onLoad={() => setUrlError(false)}
                                                     />
+                                                    {urlError && <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center"><X className="w-5 h-5 text-red-500 opacity-30" /></div>}
                                                 </div>
                                                 <div className="flex-grow">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Live Preview</p>
-                                                    <p className={`text-xs font-black italic uppercase ${urlError ? 'text-red-500' : 'text-primary'}`}>
-                                                        {urlError ? '⚠️ Broken or invalid link' : '✨ Looks good! Press Enter'}
-                                                    </p>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Link Preview</p>
+                                                    <div className="space-y-1">
+                                                        {urlError ? (
+                                                            <>
+                                                                <p className="text-xs font-black italic uppercase text-red-500">
+                                                                    ⚠️ Warning: Link might be invalid
+                                                                </p>
+                                                                <p className="text-[9px] opacity-40 font-medium">Make sure you copied its "Image Address" (ending in .jpg, .png, etc.), not the website address.</p>
+                                                            </>
+                                                        ) : (
+                                                            <p className="text-xs font-black italic uppercase text-primary">
+                                                                ✨ Link looks valid! Press Enter
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         )}
@@ -724,13 +736,13 @@ export const MerchantDashboard = () => {
                                         </div>
 
                                         {/* Real-time Preview for Edit */}
-                                        {editUrlInput && (
+                                        {(editUrlInput && editUrlInput.startsWith('http')) && (
                                             <motion.div
                                                 initial={{ opacity: 0, y: -10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="p-4 bg-foreground/5 rounded-[2rem] border border-foreground/10 flex items-center gap-4"
                                             >
-                                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-foreground/10">
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden bg-white flex-shrink-0 border border-foreground/10 flex items-center justify-center relative group">
                                                     <img
                                                         src={editUrlInput}
                                                         alt="URL Preview"
@@ -738,12 +750,24 @@ export const MerchantDashboard = () => {
                                                         onError={() => setUrlError(true)}
                                                         onLoad={() => setUrlError(false)}
                                                     />
+                                                    {urlError && <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center"><X className="w-5 h-5 text-red-500 opacity-30" /></div>}
                                                 </div>
                                                 <div className="flex-grow">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Live Preview</p>
-                                                    <p className={`text-xs font-black italic uppercase ${urlError ? 'text-red-500' : 'text-primary'}`}>
-                                                        {urlError ? '⚠️ Broken or invalid link' : '✨ Looks good! Press Enter'}
-                                                    </p>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Link Preview</p>
+                                                    <div className="space-y-1">
+                                                        {urlError ? (
+                                                            <>
+                                                                <p className="text-xs font-black italic uppercase text-red-500">
+                                                                    ⚠️ Warning: Link might be invalid
+                                                                </p>
+                                                                <p className="text-[9px] opacity-40 font-medium">Make sure you copied its "Image Address" (ending in .jpg, .png, etc.), not the website address.</p>
+                                                            </>
+                                                        ) : (
+                                                            <p className="text-xs font-black italic uppercase text-primary">
+                                                                ✨ Link looks valid! Press Enter
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         )}

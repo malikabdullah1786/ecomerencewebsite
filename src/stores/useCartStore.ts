@@ -6,6 +6,7 @@ interface CartItem {
     id: number;
     name: string;
     price: number;
+    compare_at_price?: number;
     image: string;
     quantity: number;
     stock: number; // Current available stock
@@ -30,8 +31,7 @@ export const useCartStore = create<CartState>()(
                 const availableStock = product.stock ?? 0;
 
                 if (availableStock <= 0) return;
-
-                let newItems;
+                let newItems: CartItem[];
                 if (existingItem) {
                     if (existingItem.quantity >= availableStock) {
                         useToastStore.getState().show(`Only ${availableStock} units available in stock.`, 'error');
@@ -41,9 +41,16 @@ export const useCartStore = create<CartState>()(
                         item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
                     );
                 } else {
-                    newItems = [...currentItems, { ...product, quantity: 1, stock: availableStock }];
+                    const itemImage = product.image || product.image_url;
+                    newItems = [...currentItems, {
+                        ...product,
+                        image: itemImage,
+                        compare_at_price: product.compare_at_price,
+                        quantity: 1,
+                        stock: availableStock
+                    }];
                 }
-                set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
+                set({ items: newItems, total: newItems.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0) });
             },
             removeItem: (id) => {
                 const newItems = get().items.filter(item => item.id !== id);

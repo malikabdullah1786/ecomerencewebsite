@@ -198,12 +198,12 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
 
                 {/* Left: Checkout Form */}
-                <div className="lg:col-span-8 space-y-8 md:space-y-12 order-2 lg:order-1">
-                    <div className="flex items-center gap-4 mb-8">
-                        <button onClick={onBack} className="p-2 hover:bg-foreground/5 rounded-full transition-colors">
-                            <ArrowLeft className="w-5 h-5" />
+                <div className="lg:col-span-8 space-y-6 md:space-y-12 order-2 lg:order-1">
+                    <div className="flex items-center gap-3 mb-6 sm:mb-8">
+                        <button onClick={onBack} className="p-1.5 sm:p-2 hover:bg-foreground/5 rounded-full transition-colors">
+                            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
-                        <h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase italic">Checkout</h1>
+                        <h1 className="text-xl md:text-4xl font-black tracking-tighter uppercase italic">Checkout</h1>
                     </div>
 
                     {/* Stepper */}

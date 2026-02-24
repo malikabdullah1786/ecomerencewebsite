@@ -11,12 +11,12 @@ interface SEOProps {
 export const SEO = ({
     title = 'Tarzify | Premium Lifestyle Store',
     description = 'Discover a complete shopping ecosystem where premium quality meets unparalleled convenience. Enjoy rapid, tracked delivery across Pakistan.',
-    image = '/logo.png', // Fallback to logo or a default OG image
-    url = 'https://tarzify.com',
+    image = '/og-image-1200.png', // Fallback to optimized OG image
+    url = 'https://www.tarzify.com',
     type = 'website'
 }: SEOProps) => {
     const siteTitle = title === 'Tarzify | Premium Lifestyle Store' ? title : `${title} | Tarzify`;
-    const baseUrl = 'https://tarzify.com';
+    const baseUrl = 'https://www.tarzify.com';
 
     // Ensure absolute image URL for social previews
     const absoluteImageUrl = image.startsWith('http') ? image : `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`;
@@ -90,10 +90,10 @@ export const SEO = ({
             <meta name="format-detection" content="telephone=no" />
 
             {/* Favicon - Technical Compliance for Google Search */}
-            <link rel="icon" type="image/png" sizes="192x192" href="/logo.png" />
-            <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />
-            <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
-            <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
+            <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+            <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png" />
+            <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+            <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 
             {/* Structured Data */}
             <script type="application/ld+json">

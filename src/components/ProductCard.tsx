@@ -56,14 +56,14 @@ export const ProductCard = (product: ProductCardProps) => {
                         src={mainImageError ? PLACEHOLDER_IMAGE : image}
                         alt={name}
                         onError={() => setMainImageError(true)}
-                        className={`w-full h-full object-cover transition-all duration-700 ${image_urls.length > 1 ? 'group-hover:opacity-0' : ''}`}
+                        className={`w-full h-full object-cover transition-all duration-700 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
                     />
                 )}
 
                 {/* Secondary Image on Hover */}
-                {image_urls.length > 1 && (
+                {(image_urls?.length ?? 0) > 1 && (
                     <img
-                        src={secondaryImageError ? PLACEHOLDER_IMAGE : image_urls[1]}
+                        src={secondaryImageError ? PLACEHOLDER_IMAGE : image_urls![1]}
                         alt={name}
                         onError={() => setSecondaryImageError(true)}
                         className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700"

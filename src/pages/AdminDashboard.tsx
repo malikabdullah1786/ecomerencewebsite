@@ -56,8 +56,9 @@ export const AdminDashboard = () => {
             if (error) throw error;
             useToastStore.getState().show('Stock updated successfully', 'success');
             await refetch();
-        } catch (err) {
-            useToastStore.getState().show((err as Error).message, 'error');
+        } catch (err: any) {
+            console.error('Error updating stock:', err);
+            useToastStore.getState().show('Update failed: ' + (err.message || 'Unknown error'), 'error');
         } finally {
             setUpdatingId(null);
         }

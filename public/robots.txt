@@ -1,11 +1,12 @@
 User-agent: *
 Allow: /
 
-# Specifically allow Googlebot-Image to index branding for search result favicons
+# Allow Googlebot-Image to index all branding and metadata assets
 User-agent: Googlebot-Image
 Allow: /logo.png
-Allow: /logo-circular.png
-Allow: /favicon.ico
+Allow: /favicon-*.png
+Allow: /og-image-*.png
+Allow: /apple-icon-*.png
 Allow: /assets/
 
-Sitemap: https://tarzify.com/sitemap.xml
+Sitemap: https://www.tarzify.com/sitemap.xml

@@ -84,18 +84,27 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                                         +
                                                     </button>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-black text-primary">Rs. {(item.price * item.quantity).toLocaleString()}</span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            removeItem(item.id);
-                                                        }}
-                                                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                        title="Remove item"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="font-black text-primary leading-none">Rs. {(item.price * item.quantity).toLocaleString()}</span>
+                                                            {item.compare_at_price && item.compare_at_price > item.price && (
+                                                                <span className="text-[10px] text-gray-400 line-through">
+                                                                    Rs. {(item.compare_at_price * item.quantity).toLocaleString()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                removeItem(item.id);
+                                                            }}
+                                                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                            title="Remove item"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

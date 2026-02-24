@@ -398,16 +398,28 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                     <span className="text-xs font-black text-foreground">{avgRating} ({reviews.length} Reviews)</span>
                                 </div>
                             </div>
-                            <h1 className="text-5xl md:text-6xl font-black tracking-tighter leading-none">{product.name}</h1>
-                            <div className="flex flex-col gap-2">
-                                <p className="text-3xl font-black text-primary">Rs. {product.price.toLocaleString()}</p>
+                            <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter leading-none">{product.name}</h1>
+                            <div className="flex flex-col gap-1 sm:gap-2">
+                                <div className="flex items-baseline gap-3">
+                                    <p className="text-3xl sm:text-4xl md:text-6xl font-black text-primary leading-none">Rs. {product.price.toLocaleString()}</p>
+                                    {product.compare_at_price && product.compare_at_price > product.price && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg sm:text-xl text-foreground/30 line-through font-bold">
+                                                Rs. {product.compare_at_price.toLocaleString()}
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-[#f85606] text-white text-[10px] font-bold rounded-sm">
+                                                -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-1.5 text-yellow-500">
                                     <div className="flex">
                                         {[...Array(5)].map((_, i) => (
-                                            <Star key={i} className={`w-3.5 h-3.5 ${i < Math.round(Number(avgRating)) ? 'fill-current' : 'opacity-20'}`} />
+                                            <Star key={i} className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${i < Math.round(Number(avgRating)) ? 'fill-current' : 'opacity-20'}`} />
                                         ))}
                                     </div>
-                                    <span className="text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {reviews.length} reviews)</span>
+                                    <span className="text-[10px] sm:text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {reviews.length} reviews)</span>
                                 </div>
                             </div>
                         </div>
@@ -457,7 +469,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         </div>
 
                         {/* Perks */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 border-t border-white/10">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 sm:pt-8 border-t border-white/10">
                             {[
                                 { icon: Truck, label: 'Fast Shipping', hash: 'shipping-policy' },
                                 { icon: ShieldCheck, label: 'Secure Payment', hash: 'privacy' },
@@ -466,10 +478,10 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 <button
                                     key={label}
                                     onClick={() => window.location.hash = hash}
-                                    className="flex flex-col items-center text-center gap-2 p-4 glass rounded-3xl hover:bg-white/10 hover:scale-105 transition-all group"
+                                    className="flex flex-col items-center text-center gap-1 sm:gap-2 p-2 sm:p-4 glass rounded-[1.5rem] sm:rounded-3xl hover:bg-white/10 hover:scale-105 transition-all group"
                                 >
-                                    <Icon className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">{label}</span>
+                                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary group-hover:scale-110 transition-transform" />
+                                    <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">{label}</span>
                                 </button>
                             ))}
                         </div>
