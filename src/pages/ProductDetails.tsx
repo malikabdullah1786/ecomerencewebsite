@@ -7,6 +7,9 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, RefreshCcw, Send, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SEO } from '../components/SEO';
 import { useToastStore } from '../stores/useToastStore';
+import { generateProductURL } from '../lib/slugify';
+
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop';
 
 interface Review {
     id: number;
@@ -14,14 +17,14 @@ interface Review {
     comment: string;
     created_at: string;
     user_id: string;
-    profiles?: { full_name: string };
+    profiles?: { full_name: string } | null;
 }
 
 export const ProductDetails = ({ productId, onBack, onFly }: { productId: number; onBack: () => void; onFly: (e: any) => void }) => {
-    const { products } = useProducts();
+    const { products, loading: productsLoading } = useProducts();
     const { user } = useAuthStore();
     const addItem = useCartStore((state) => state.addItem);
-    const product = products.find(p => p.id === productId);
+    const product = products.find(p => String(p.id) === String(productId));
 
     const [reviews, setReviews] = useState<Review[]>([]);
     const [newRating, setNewRating] = useState(5);
@@ -30,9 +33,10 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     const [loadingReviews, setLoadingReviews] = useState(true);
 
     const fetchReviews = useCallback(async () => {
+        if (!productId) return;
         setLoadingReviews(true);
         try {
-            // Step 1: Fetch reviews
+            // Step 1: Fetch reviews only
             const { data: reviewsData, error: reviewsError } = await supabase
                 .from('reviews')
                 .select('*')
@@ -41,12 +45,13 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
 
             if (reviewsError) throw reviewsError;
 
-            if (!reviewsData || reviewsData.length === 0) {
-                setReviews([]);
-                return;
-            }
+            // Show reviews immediately (even without names) to break the "loading" hang
+            setReviews(reviewsData || []);
+            setLoadingReviews(false);
 
-            // Step 2: Fetch profiles for these users
+            if (!reviewsData || reviewsData.length === 0) return;
+
+            // Step 2: Fetch profiles for these users in background
             const userIds = Array.from(new Set(reviewsData.map(r => r.user_id)));
             const { data: profilesData, error: profilesError } = await supabase
                 .from('profiles')
@@ -54,24 +59,23 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                 .in('id', userIds);
 
             if (profilesError) {
-                console.warn('Error fetching profiles, falling back to Anonymous:', profilesError);
+                console.warn('Error fetching profiles:', profilesError);
+                return;
             }
 
-            // Create a lookup map
+            // Step 3: Mix in the names
             const profileMap = (profilesData || []).reduce((acc: any, p) => {
                 acc[p.id] = p.full_name;
                 return acc;
             }, {});
 
-            // Step 3: Combine data
-            const enrichedReviews = reviewsData.map(r => ({
+            setReviews(prev => prev.map(r => ({
                 ...r,
                 profiles: profileMap[r.user_id] ? { full_name: profileMap[r.user_id] } : null
-            }));
-
-            setReviews(enrichedReviews);
+            })));
         } catch (err) {
             console.error('Error fetching reviews:', err);
+            setReviews([]); // Clear on error to stop spinner
         } finally {
             setLoadingReviews(false);
         }
@@ -127,7 +131,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             }),
             offers: {
                 '@type': 'Offer',
-                url: `https://tarzify.com/#product/${product.id}`,
+                url: `https://tarzify.com/${generateProductURL(product.name, product.sku)}`,
                 priceCurrency: 'PKR',
                 price: product.price,
                 availability: product.stock > 0
@@ -235,8 +239,40 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     }, [product]);
 
     const [zoomOrigin, setZoomOrigin] = useState({ x: 0, y: 0 });
+    const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
-    if (!product) return null;
+    const handleImageError = (src: string) => {
+        setBrokenImages(prev => new Set(prev).add(src));
+    };
+
+    const getImageUrl = (src: string) => {
+        return src && brokenImages.has(src) ? PLACEHOLDER_IMAGE : src;
+    };
+
+    if (productsLoading && !product) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                <p className="font-black uppercase tracking-tighter opacity-30 italic">Loading Product Details...</p>
+            </div>
+        );
+    }
+
+    if (!product) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background p-6 text-center">
+                <div className="w-24 h-24 bg-foreground/5 rounded-full flex items-center justify-center mb-4">
+                    <ShoppingBag className="w-12 h-12 opacity-20" />
+                </div>
+                <h2 className="text-3xl font-black tracking-tighter uppercase italic">Product Not Found</h2>
+                <p className="opacity-50 max-w-md">Sorry, we couldn't find the product you're looking for. It might have been removed or the link is incorrect.</p>
+                <button onClick={onBack} className="flex items-center gap-2 glass px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform">
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Store
+                </button>
+            </div>
+        );
+    }
 
     const images = product.image_urls && product.image_urls.length > 0
         ? product.image_urls
@@ -290,9 +326,9 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         >
                             {activeImage && (
                                 <img
-                                    src={activeImage}
+                                    src={getImageUrl(activeImage)}
                                     alt={product.name}
-                                    crossOrigin="anonymous"
+                                    onError={() => handleImageError(activeImage)}
                                     style={{
                                         transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                                     }}
@@ -337,7 +373,14 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                         onClick={() => setActiveImage(img)}
                                         className={`w-20 h-20 flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${activeImage === img ? 'border-primary scale-95' : 'border-transparent opacity-50 hover:opacity-100'}`}
                                     >
-                                        {img && <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />}
+                                        {img && (
+                                            <img
+                                                src={getImageUrl(img)}
+                                                alt={`${product.name} ${idx + 1}`}
+                                                onError={() => handleImageError(img)}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        )}
                                     </button>
                                 ))}
                             </div>

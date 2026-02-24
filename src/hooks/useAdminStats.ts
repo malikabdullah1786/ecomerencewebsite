@@ -13,36 +13,25 @@ export const useAdminStats = () => {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            // 1. Total Revenue & Orders
-            const { data: orders, error: ordersError } = await supabase
-                .from('orders')
-                .select('total_amount');
+            // Run all queries in parallel for maximum speed
+            const [ordersRes, customersRes, productsRes] = await Promise.all([
+                supabase.from('orders').select('total_amount'),
+                supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'customer'),
+                supabase.from('products').select('*', { count: 'exact', head: true })
+            ]);
 
-            if (ordersError) throw ordersError;
+            if (ordersRes.error) throw ordersRes.error;
+            if (customersRes.error) throw customersRes.error;
+            if (productsRes.error) throw productsRes.error;
 
-            const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-            const totalOrders = orders?.length || 0;
-
-            // 2. Active Customers
-            const { count: customerCount, error: customerError } = await supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('role', 'customer');
-
-            if (customerError) throw customerError;
-
-            // 3. Active Products
-            const { count: productCount, error: productError } = await supabase
-                .from('products')
-                .select('*', { count: 'exact', head: true });
-
-            if (productError) throw productError;
+            const totalRevenue = ordersRes.data?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
+            const totalOrders = ordersRes.data?.length || 0;
 
             setStats({
                 totalRevenue,
                 totalOrders,
-                totalCustomers: customerCount || 0,
-                activeProducts: productCount || 0
+                totalCustomers: customersRes.count || 0,
+                activeProducts: productsRes.count || 0
             });
         } catch (err) {
             console.error('Error fetching admin stats:', err);

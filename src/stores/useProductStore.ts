@@ -1,0 +1,111 @@
+import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+let productsChannel: RealtimeChannel | null = null;
+
+export interface Product {
+    id: number;
+    name: string;
+    sku: string;
+    price: number;
+    image_url: string;
+    category: string;
+    stock: number;
+    created_at: string;
+    is_returnable?: boolean;
+    merchant_id?: string;
+    description?: string;
+    image_urls?: string[];
+    avg_rating?: number;
+}
+
+interface ProductState {
+    products: Product[];
+    loading: boolean;
+    error: string | null;
+    lastFetched: number | null;
+    fetchProducts: (force?: boolean) => Promise<void>;
+    subscribe: () => () => void;
+}
+
+export const useProductStore = create<ProductState>((set, get) => ({
+    products: [],
+    loading: false,
+    error: null,
+    lastFetched: null,
+
+    subscribe: () => {
+        if (productsChannel) return () => { };
+
+        productsChannel = supabase
+            .channel('products-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+                console.log('Real-time notification:', payload.eventType, payload.new || payload.old);
+
+                const { products } = get();
+
+                if (payload.eventType === 'INSERT') {
+                    // Pre-enrich the new product (rating starts at 0)
+                    const newProduct = { ...payload.new as Product, avg_rating: 0 };
+                    set({ products: [...products, newProduct].sort((a, b) => a.id - b.id) });
+                }
+                else if (payload.eventType === 'UPDATE') {
+                    set({
+                        products: products.map(p =>
+                            p.id === (payload.new as Product).id
+                                ? { ...p, ...payload.new as Product } // Merges updates while keeping locally calculated avg_rating
+                                : p
+                        )
+                    });
+                }
+                else if (payload.eventType === 'DELETE') {
+                    set({
+                        products: products.filter(p => p.id !== (payload.old as { id: number }).id)
+                    });
+                }
+            })
+            .subscribe();
+
+        return () => { };
+    },
+
+    fetchProducts: async (force = false) => {
+        const { lastFetched, loading } = get();
+
+        // Only fetch if forced or if data is older than 5 minutes (or never fetched)
+        const shouldFetch = force || !lastFetched || Date.now() - lastFetched > 5 * 60 * 1000;
+
+        if (!shouldFetch || loading) return;
+
+        set({ loading: true });
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*, reviews(rating)')
+                .is('deleted_at', null)
+                .order('id', { ascending: true });
+
+            if (error) throw error;
+
+            const enriched = (data || []).map((p: any) => {
+                const revs: { rating: number }[] = p.reviews || [];
+                const avg_rating = revs.length > 0
+                    ? revs.reduce((sum, r) => sum + r.rating, 0) / revs.length
+                    : 0;
+                return { ...p, avg_rating };
+            });
+
+            set({
+                products: enriched,
+                error: null,
+                lastFetched: Date.now()
+            });
+        } catch (err: any) {
+            console.error('Error fetching products:', err);
+            set({ error: err.message });
+        } finally {
+            set({ loading: false });
+        }
+    }
+}));

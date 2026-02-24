@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+let ordersChannel: RealtimeChannel | null = null;
 
 interface Notification {
     id: string;
@@ -14,8 +17,10 @@ export const FomoPopups = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     useEffect(() => {
+        if (ordersChannel) return; // Already subscribed
+
         // Subscribe to new orders for real-time FOMO
-        const subscription = supabase
+        ordersChannel = supabase
             .channel('public:orders')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
                 const { data: product } = await supabase
@@ -40,9 +45,8 @@ export const FomoPopups = () => {
             })
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(subscription);
-        };
+        // Note: Keep channel alive globally to avoid rapid connect/disconnect
+        return () => { };
     }, []);
 
     return (

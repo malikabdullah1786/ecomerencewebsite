@@ -3,6 +3,7 @@ import { X, Loader2, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+import { generateProductURL, slugify } from '../lib/slugify';
 
 interface ProductFormProps {
     onClose: () => void;
@@ -32,12 +33,16 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                 throw new Error('At least one image URL is required');
             }
 
+            if (!formData.sku.trim()) {
+                throw new Error('SKU is required for the new URL strategy');
+            }
+
             const { error } = await supabase
                 .from('products')
                 .insert({
                     merchant_id: user?.id,
                     name: formData.name,
-                    sku: formData.sku || `SKU-${Date.now()}`,
+                    sku: formData.sku.trim().toUpperCase(),
                     price: parseFloat(formData.price),
                     category: formData.category,
                     stock: parseInt(formData.stock),
@@ -87,16 +92,27 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                                 className="w-full bg-foreground/5 border-none rounded-xl p-4 outline-none focus:ring-2 ring-primary/30"
                                 placeholder="e.g. Wireless Headphones"
                             />
+                            {formData.name && (
+                                <p className="mt-2 text-[10px] font-bold opacity-40 uppercase tracking-widest px-2">
+                                    Slug: <span className="text-primary">{slugify(formData.name)}</span>
+                                </p>
+                            )}
                         </div>
                         <div>
-                            <label className="text-xs font-black uppercase tracking-widest opacity-50 block mb-2">SKU (Optional)</label>
+                            <label className="text-xs font-black uppercase tracking-widest opacity-50 block mb-2">SKU (Required)</label>
                             <input
+                                required
                                 type="text"
                                 value={formData.sku}
-                                onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                                onChange={e => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
                                 className="w-full bg-foreground/5 border-none rounded-xl p-4 outline-none focus:ring-2 ring-primary/30"
-                                placeholder="Auto-generated if empty"
+                                placeholder="e.g. TRZ-001"
                             />
+                            {formData.sku && formData.name && (
+                                <p className="mt-2 text-[10px] font-bold opacity-40 uppercase tracking-widest px-2">
+                                    Live URL: <span className="text-primary">tarzify.com/{generateProductURL(formData.name, formData.sku)}</span>
+                                </p>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>

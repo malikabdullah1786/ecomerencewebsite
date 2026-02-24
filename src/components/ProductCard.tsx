@@ -1,7 +1,10 @@
 import { motion } from 'framer-motion';
 import { ShoppingCart, Star } from 'lucide-react';
+import { useState } from 'react';
 import { useCartStore } from '../stores/useCartStore';
-import { slugify } from '../lib/slugify';
+import { generateProductURL } from '../lib/slugify';
+
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop';
 
 interface ProductCardProps {
     id: number;
@@ -12,12 +15,16 @@ interface ProductCardProps {
     description?: string;
     rating?: number;
     stock?: number;
+    sku: string;
+    image_urls?: string[];
     onFly?: (e: React.MouseEvent) => void;
 }
 
 export const ProductCard = (product: ProductCardProps) => {
-    const { id: _id, name, price, image, category, rating = 0, stock = 1, onFly } = product;
+    const { id: _id, name, price, image, category, rating = 0, stock = 1, sku, image_urls = [], onFly } = product;
     const addItem = useCartStore((state) => state.addItem);
+    const [mainImageError, setMainImageError] = useState(false);
+    const [secondaryImageError, setSecondaryImageError] = useState(false);
 
     const isOOS = stock === 0;
 
@@ -34,17 +41,27 @@ export const ProductCard = (product: ProductCardProps) => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             whileHover={{ y: -10 }}
-            onClick={() => { window.location.hash = `#product/${slugify(name)}`; }}
+            onClick={() => { window.location.hash = generateProductURL(name, sku); }}
             className={`group relative glass rounded-3xl overflow-hidden border-white/10 flex flex-col h-full cursor-pointer ${isOOS ? 'opacity-90' : ''}`}
         >
             {/* Image Container */}
             <div className="relative aspect-[4/5] overflow-hidden bg-foreground/5 group">
                 {image && (
                     <img
-                        src={image}
+                        src={mainImageError ? PLACEHOLDER_IMAGE : image}
                         alt={name}
-                        crossOrigin="anonymous"
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        onError={() => setMainImageError(true)}
+                        className={`w-full h-full object-cover transition-all duration-700 ${image_urls.length > 1 ? 'group-hover:opacity-0 group-hover:scale-110' : 'group-hover:scale-110'}`}
+                    />
+                )}
+
+                {/* Secondary Image on Hover */}
+                {image_urls.length > 1 && (
+                    <img
+                        src={secondaryImageError ? PLACEHOLDER_IMAGE : image_urls[1]}
+                        alt={name}
+                        onError={() => setSecondaryImageError(true)}
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 scale-105 group-hover:scale-110"
                     />
                 )}
 

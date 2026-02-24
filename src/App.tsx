@@ -20,7 +20,7 @@ import { PolicyPage } from './pages/PolicyPage';
 import { Footer } from './components/Footer';
 import { SEO } from './components/SEO';
 import { ToastContainer } from './components/ToastContainer';
-import { slugify } from './lib/slugify';
+
 
 function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -68,8 +68,12 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
+
+      // Admin/Merchant Dashboard
       setShowAdmin(hash === '#admin' && role === 'admin');
       setShowMerchant(hash === '#merchant' && (role === 'merchant' || role === 'admin'));
+
+      // General Pages
       setShowCheckout(hash === '#checkout');
       setShowProfile(hash === '#profile');
       setShowTrackOrder(hash === '#track-order');
@@ -78,35 +82,42 @@ function App() {
       const matchedPolicy = policyTypes.find(t => hash === `#${t}`);
       setShowPolicy(matchedPolicy ? (matchedPolicy === 'shipping-policy' ? 'shipping' : matchedPolicy) : null);
 
+      // Product Details routing
       if (hash.startsWith('#product/')) {
-        const slug = hash.split('/').slice(1).join('/');
-        const numericId = parseInt(slug);
-        if (!isNaN(numericId) && String(numericId) === slug) {
-          setViewProductId(numericId);
+        const path = hash.replace('#product/', '');
+        const segments = path.split('-');
+        const skuFromUrl = segments[segments.length - 1].toUpperCase();
+
+        if (products.length > 0) {
+          // 1. Try SKU match
+          const matched = products.find(p => p.sku.toUpperCase() === skuFromUrl);
+          if (matched) {
+            setViewProductId(matched.id);
+          } else {
+            // 2. Fallback to direct numeric ID
+            const numericId = parseInt(path);
+            if (!isNaN(numericId) && String(numericId) === path) {
+              setViewProductId(numericId);
+            } else {
+              setViewProductId(null);
+            }
+          }
         } else {
-          // Slug resolution happens in next effect when products load
+          // Products are still loading, but we know we ARE on a product path
+          // We set a marker or just wait for the next iteration of this effect
+          // To ensure we don't flash the homepage, we can keep viewProductId at 0 or a special value
+          // but better to just let the renderContent handle the 'loading' state
         }
       } else {
         setViewProductId(null);
       }
     };
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange();
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [role]);
 
-  // Second effect: Resolve slugs once products are available
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#product/') && products.length > 0) {
-      const slug = hash.split('/').slice(1).join('/');
-      const numericId = parseInt(slug);
-      if (isNaN(numericId) || String(numericId) !== slug) {
-        const matched = products.find(p => slugify(p.name) === slug);
-        if (matched) setViewProductId(matched.id);
-      }
-    }
-  }, [products, window.location.hash]);
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Run on mount and when products/role change
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [role, products, window.location.hash]);
 
   const handleProductFly = () => {
     // We can re-enable FlyToCart logic if needed, but keeping it simple for now
@@ -119,14 +130,14 @@ function App() {
     if (showAdmin && role === 'admin') return <AdminDashboard />;
     if (showMerchant && (role === 'merchant' || role === 'admin')) return <MerchantDashboard />;
 
-    if (viewProductId) {
+    if (viewProductId || window.location.hash.startsWith('#product/')) {
       const product = products.find(p => p.id === viewProductId);
 
-      if (loading && !product) {
+      if (loading || !product || !viewProductId) {
         return (
-          <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+          <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
-            <p className="font-black uppercase tracking-tighter opacity-30 italic">Finding Product...</p>
+            <p className="font-black uppercase tracking-tighter opacity-30 italic">Finding your product...</p>
           </div>
         );
       }
@@ -201,7 +212,9 @@ function App() {
                 name={product.name}
                 price={product.price}
                 image={product.image_url}
+                image_urls={product.image_urls}
                 category={product.category}
+                sku={product.sku}
                 stock={product.stock}
                 rating={product.avg_rating}
                 onFly={() => handleProductFly()}

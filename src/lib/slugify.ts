@@ -6,4 +6,15 @@ export const slugify = (name: string): string =>
     name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
+        .replace(/(^-|-$)/g, '')
+        .substring(0, 70);
+
+/**
+ * Generates a full product URL path.
+ * e.g. "/product/premium-leather-bag-TRZ-001"
+ */
+export const generateProductURL = (name: string, sku: string): string => {
+    const slug = slugify(name);
+    return `#product/${slug}-${sku.toLowerCase()}`;
+};
+
