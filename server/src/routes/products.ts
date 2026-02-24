@@ -9,9 +9,9 @@ const router = express.Router();
 
 // Cloudinary Config
 const cloudinaryConfig = {
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dtaonueid',
-    api_key: process.env.CLOUDINARY_API_KEY || '895755865122633',
-    api_secret: process.env.CLOUDINARY_API_SECRET || 'GXSLkzUOZjxmc93FtnzaY5MuLhs'
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 };
 
 console.log('[Cloudinary] Attempting initialization with:', {
