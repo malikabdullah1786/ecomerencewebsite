@@ -24,7 +24,7 @@ const POLICIES = {
                     <p className="mb-2">We share data only with essential partners:</p>
                     <ul className="list-disc pl-5 opacity-80 space-y-1">
                         <li><strong>Payment Processors:</strong> FastPay (for secure transactions).</li>
-                        <li><strong>Couriers:</strong> TCS/Leopards/PostEx (for delivery).</li>
+                        <li><strong>Couriers:</strong> TCS/LEOPARDS/PostEx (for delivery).</li>
                     </ul>
                 </div>
                 <div>
@@ -63,7 +63,7 @@ const POLICIES = {
                 <div>
                     <h3 className="font-black text-xl mb-2">4. Shipping Costs</h3>
                     <p>Customers are responsible for return shipping costs. Original shipping costs are non-refundable.</p>
-                    <p className="mt-4 font-bold text-primary">Contact Support: customersupport@tarzify.com</p>
+                    <p className="mt-4 font-bold text-primary">Contact Support: support@tarzify.com</p>
                 </div>
             </div>
         )
@@ -82,7 +82,7 @@ const POLICIES = {
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">2. Couriers</h3>
-                    <p>We use trusted partners: TCS, Leopards, and PostEx.</p>
+                    <p>We use trusted partners: TCS, LEOPARDS, and PostEx.</p>
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">3. Order Tracking</h3>
@@ -102,7 +102,7 @@ const POLICIES = {
             <div className="space-y-6">
                 <div>
                     <h3 className="font-black text-xl mb-2">1. Acceptance</h3>
-                    <p>By using Tarzify, you agree to these terms.</p>
+                    <p>By using TARZIFY, you agree to these terms.</p>
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">2. Pricing</h3>
@@ -110,7 +110,7 @@ const POLICIES = {
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">3. Intellectual Property</h3>
-                    <p>All content (images, text, logos) is property of Tarzify.</p>
+                    <p>All content (images, text, logos) is property of TARZIFY.</p>
                 </div>
                 <div>
                     <h3 className="font-black text-xl mb-2">4. Limitation of Liability</h3>

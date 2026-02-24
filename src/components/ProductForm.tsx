@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import { generateProductURL, slugify } from '../lib/slugify';
+import { useToastStore } from '../stores/useToastStore';
 
 interface ProductFormProps {
     onClose: () => void;
@@ -17,20 +18,34 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
         name: '',
         sku: '',
         price: '',
+        compare_at_price: '',
         category: '',
         stock: '',
         image_urls_input: '',
         is_returnable: true
     });
 
+    useEffect(() => {
+        // Lock scroll on mount
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            // Restore scroll on unmount
+            document.body.style.overflow = originalStyle;
+        };
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const urls = formData.image_urls_input.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+            const urls = formData.image_urls_input
+                .split('\n')
+                .map(u => u.trim())
+                .filter(u => u.length > 0 && u.startsWith('http'));
 
             if (urls.length === 0) {
-                throw new Error('At least one image URL is required');
+                throw new Error('Please provide at least one valid image URL (starting with http)');
             }
 
             if (!formData.sku.trim()) {
@@ -44,6 +59,7 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                     name: formData.name,
                     sku: formData.sku.trim().toUpperCase(),
                     price: parseFloat(formData.price),
+                    compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
                     category: formData.category,
                     stock: parseInt(formData.stock),
                     image_url: urls[0], // First image as main image
@@ -52,10 +68,11 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                 });
 
             if (error) throw error;
+            useToastStore.getState().show('Product added successfully!', 'success');
             onSuccess();
             onClose();
         } catch (err) {
-            alert('Error adding product: ' + (err as Error).message);
+            useToastStore.getState().show('Error adding product: ' + (err as Error).message, 'error');
         } finally {
             setLoading(false);
         }
@@ -71,6 +88,7 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
             <motion.div
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
+                data-lenis-prevent
                 className="bg-background rounded-3xl w-full max-w-lg overflow-hidden border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-hide"
             >
                 <div className="p-6 border-b border-white/5 flex items-center justify-between bg-foreground/5 sticky top-0 backdrop-blur-md z-10">
@@ -114,7 +132,7 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                                 </p>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="text-xs font-black uppercase tracking-widest opacity-50 block mb-2">Price (Rs)</label>
                                 <input
@@ -124,6 +142,16 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                                     onChange={e => setFormData({ ...formData, price: e.target.value })}
                                     className="w-full bg-foreground/5 border-none rounded-xl p-4 outline-none focus:ring-2 ring-primary/30"
                                     placeholder="0"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black uppercase tracking-widest opacity-50 block mb-2">Original (Was)</label>
+                                <input
+                                    type="number"
+                                    value={formData.compare_at_price}
+                                    onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })}
+                                    className="w-full bg-foreground/5 border-none rounded-xl p-4 outline-none focus:ring-2 ring-primary/30"
+                                    placeholder="Optional"
                                 />
                             </div>
                             <div>

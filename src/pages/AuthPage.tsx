@@ -55,8 +55,9 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                         <X className="w-5 h-5" />
                     </button>
                 )}
-                {/* Background Glow */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -mr-16 -mt-16" />
+                <div className="flex flex-col items-center mb-8">
+                    <img src="/logo.png" alt="TARZIFY Logo" className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl" />
+                </div>
 
                 <div className="text-center mb-10">
                     <h2 className="text-4xl font-black tracking-tighter mb-2 text-white">

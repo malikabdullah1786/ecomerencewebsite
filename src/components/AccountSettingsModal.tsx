@@ -2,6 +2,7 @@ import { X, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
+import { useToastStore } from '../stores/useToastStore';
 
 export const AccountSettingsModal = ({ onClose }: { onClose: () => void }) => {
     const { user, role } = useAuthStore();
@@ -68,10 +69,10 @@ export const AccountSettingsModal = ({ onClose }: { onClose: () => void }) => {
                 });
 
             if (error) throw error;
-            alert('Profile updated successfully!');
+            useToastStore.getState().show('Profile updated successfully!', 'success');
             onClose();
         } catch (error: any) {
-            alert('Error updating profile: ' + error.message);
+            useToastStore.getState().show('Error updating profile: ' + error.message, 'error');
         } finally {
             setSaving(false);
         }
@@ -132,7 +133,7 @@ export const AccountSettingsModal = ({ onClose }: { onClose: () => void }) => {
                                         const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
                                         if (data) {
                                             useAuthStore.setState({ role: data.role });
-                                            alert('Settings Refreshed! Profile Status: ' + data.role);
+                                            useToastStore.getState().show('Settings Refreshed! Profile Status: ' + data.role, 'success');
                                         }
                                         setLoading(false);
                                     };

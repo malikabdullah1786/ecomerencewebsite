@@ -23,11 +23,14 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
 
     const itemsRows = items.map((item: any) => `
         <tr>
-            <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                <strong>${item.name}</strong><br/>
-                <span style="color: #666; font-size: 13px;">Quantity: ${item.quantity}</span>
+            <td style="padding: 15px 15px 15px 0; border-bottom: 1px solid #eeeeee; width: 60px;">
+                <img src="${item.image || 'https://via.placeholder.com/60'}" width="60" height="60" style="border-radius: 8px; block-size: 60px; object-fit: cover;" alt="${item.name}">
             </td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; text-align: right;">
+            <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee;">
+                <div style="font-weight: 700; color: #212121; font-size: 14px; margin-bottom: 4px;">${item.name}</div>
+                <div style="color: #757575; font-size: 12px;">Qty: ${item.quantity} | Rs. ${item.price.toLocaleString()} each</div>
+            </td>
+            <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 700; color: #212121; vertical-align: top;">
                 Rs. ${(item.price * item.quantity).toLocaleString()}
             </td>
         </tr>
@@ -37,7 +40,7 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
         await transporter.sendMail({
             from: process.env.SMTP_FROM || `"TARZIFY" <${process.env.SMTP_USER}>`,
             to: email,
-            subject: `Order Confirmation #${order.order_number} - TARZIFY`,
+            subject: `Hooray! Your Order #${order.order_number} is Confirmed`,
             html: `
                 <!DOCTYPE html>
                 <html>
@@ -45,97 +48,104 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 </head>
-                <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
-                    <div style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f6; color: #212121;">
+                    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
                         
-                        <!-- Header -->
-                        <div style="background: linear-gradient(135deg, #ff3366 0%, #ff6b9d 100%); padding: 40px 30px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: 2px;">TARZIFY</h1>
-                            <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.9;">Premium Lifestyle Store</p>
+                        <!-- Top Accent Bar -->
+                        <div style="height: 6px; background-color: #f85606;"></div>
+
+                        <!-- Logo Section -->
+                        <div style="padding: 30px 40px; text-align: center; border-bottom: 1px solid #eeeeee;">
+                            <h1 style="margin: 0; color: #f85606; font-size: 32px; font-weight: 900; letter-spacing: -1px; font-style: italic;">TARZIFY</h1>
+                            <p style="margin: 5px 0 0 0; color: #424242; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Elevating Your Lifestyle</p>
                         </div>
 
-                        <!-- Content -->
-                        <div style="padding: 40px 30px;">
-                            
-                            <!-- Success Message -->
-                            <div style="text-align: center; margin-bottom: 30px;">
-                                <div style="width: 60px; height: 60px; background-color: #4CAF50; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
-                                    <span style="color: white; font-size: 30px;">✓</span>
-                                </div>
-                                <h2 style="margin: 0 0 10px 0; color: #333; font-size: 24px; font-weight: 600;">Order Confirmed!</h2>
-                                <p style="margin: 0; color: #666; font-size: 15px;">Thank you for shopping with us</p>
-                            </div>
-
-                            <!-- Order Info -->
-                            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
-                                <table style="width: 100%; border-collapse: collapse;">
-                                    <tr>
-                                        <td style="padding: 8px 0; color: #666; font-size: 14px;">Order Number:</td>
-                                        <td style="padding: 8px 0; text-align: right; color: #333; font-weight: 600; font-size: 16px;">#${order.order_number}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 8px 0; color: #666; font-size: 14px;">Order Date:</td>
-                                        <td style="padding: 8px 0; text-align: right; color: #333; font-weight: 600;">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 8px 0; color: #666; font-size: 14px;">Payment Method:</td>
-                                        <td style="padding: 8px 0; text-align: right; color: #333; font-weight: 600;">${order.payment_method === 'cod' ? 'Cash on Delivery' : 'FastPay'}</td>
-                                    </tr>
-                                </table>
-                            </div>
-
-                            <!-- Order Items -->
-                            <h3 style="margin: 0 0 20px 0; color: #333; font-size: 18px; font-weight: 600; border-bottom: 2px solid #ff3366; padding-bottom: 10px;">Order Summary</h3>
-                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                                ${itemsRows}
+                        <!-- Success Header -->
+                        <div style="padding: 40px 40px 30px; text-align: center;">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 15px;">
+                                <tr>
+                                    <td align="center" valign="middle" style="color: #f85606; font-size: 64px; font-weight: bold; line-height: 1;">
+                                        &#10003;
+                                    </td>
+                                </tr>
                             </table>
+                            <h2 style="margin: 0 0 10px 0; color: #212121; font-size: 28px; font-weight: 900; letter-spacing: -0.5px;">Order Confirmed!</h2>
+                            <p style="margin: 0; color: #424242; font-size: 16px; line-height: 1.5; font-weight: 500;">Hi there! We've received your order and we're getting it ready for shipment.</p>
+                        </div>
 
-                            <!-- Billing Breakdown -->
-                            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                        <!-- Order Summary Box -->
+                        <div style="padding: 0 40px 40px;">
+                            <div style="background-color: #f9f9f9; border-radius: 12px; padding: 25px; border: 1px solid #eeeeee;">
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <tr>
-                                        <td style="padding: 10px 0; color: #666; font-size: 15px;">Subtotal:</td>
-                                        <td style="padding: 10px 0; text-align: right; color: #333; font-size: 15px;">Rs. ${subtotal.toLocaleString()}</td>
+                                        <td style="padding-bottom: 15px; font-size: 11px; color: #424242; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Order ID</td>
+                                        <td style="padding-bottom: 15px; font-size: 11px; color: #424242; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; text-align: right;">Date</td>
                                     </tr>
                                     <tr>
-                                        <td style="padding: 10px 0; color: #666; font-size: 15px;">Shipping Charges:</td>
-                                        <td style="padding: 10px 0; text-align: right; color: #333; font-size: 15px;">Rs. ${shippingCost.toLocaleString()}</td>
-                                    </tr>
-                                    <tr style="border-top: 2px solid #ddd;">
-                                        <td style="padding: 15px 0 0 0; color: #333; font-size: 18px; font-weight: 700;">Total Amount:</td>
-                                        <td style="padding: 15px 0 0 0; text-align: right; color: #ff3366; font-size: 20px; font-weight: 700;">Rs. ${total.toLocaleString()}</td>
+                                        <td style="font-size: 20px; color: #f85606; font-weight: 900; letter-spacing: -0.5px;">#${order.order_number}</td>
+                                        <td style="font-size: 16px; color: #212121; font-weight: 800; text-align: right;">${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                                     </tr>
                                 </table>
                             </div>
 
-                            <!-- Shipping Address -->
-                            <h3 style="margin: 0 0 15px 0; color: #333; font-size: 18px; font-weight: 600;">Shipping Address</h3>
-                            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
-                                <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${shippingAddress}</p>
+                            <!-- Items List -->
+                            <div style="margin-top: 30px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    ${itemsRows}
+                                </table>
                             </div>
 
-                            <!-- Tracking Info -->
-                            <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px 20px; border-radius: 4px; margin-bottom: 30px;">
-                                <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">
-                                    <strong style="color: #ff9800;">📦 Track Your Order</strong><br/>
-                                    You can track your order status anytime at <a href="https://tarzify.com/#track-order" style="color: #ff3366; text-decoration: none; font-weight: 600;">tarzify.com/#track-order</a> using your Order ID.
-                                </p>
+                            <!-- Totals -->
+                            <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid #212121;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #424242; font-size: 14px; font-weight: 600;">Subtotal</td>
+                                        <td style="padding: 8px 0; text-align: right; color: #212121; font-weight: 700; font-size: 15px;">Rs. ${subtotal.toLocaleString()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #424242; font-size: 14px; font-weight: 600;">Shipping</td>
+                                        <td style="padding: 8px 0; text-align: right; color: #212121; font-weight: 700; font-size: 15px;">Rs. ${shippingCost.toLocaleString()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 20px 0 0 0; color: #212121; font-size: 20px; font-weight: 900;">Total Amount</td>
+                                        <td style="padding: 20px 0 0 0; text-align: right; color: #f85606; font-size: 24px; font-weight: 900;">Rs. ${total.toLocaleString()}</td>
+                                    </tr>
+                                </table>
                             </div>
 
-                            <!-- Support -->
-                            <div style="text-align: center; padding-top: 20px; border-top: 1px solid #eee;">
-                                <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Need help? Contact us:</p>
-                                <p style="margin: 0; color: #ff3366; font-size: 15px; font-weight: 600;">
-                                    <a href="mailto:order@tarzify.com" style="color: #ff3366; text-decoration: none;">order@tarzify.com</a>
-                                </p>
+                            <!-- Payment & Shipping Info -->
+                            <div style="margin-top: 40px; border-top: 1px solid #eeeeee; padding-top: 30px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="width: 50%; vertical-align: top; padding-right: 20px;">
+                                            <h3 style="margin: 0 0 10px 0; font-size: 11px; color: #424242; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Shipping To</h3>
+                                            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #212121; font-weight: 700;">${shippingAddress}</p>
+                                        </td>
+                                        <td style="width: 50%; vertical-align: top;">
+                                            <h3 style="margin: 0 0 10px 0; font-size: 11px; color: #424242; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Payment Method</h3>
+                                            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #212121; font-weight: 700;">${order.payment_method === 'cod' ? 'Cash on Delivery' : 'Paid Online (FastPay)'}</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Track Button -->
+                            <div style="margin-top: 50px; text-align: center;">
+                                <a href="https://tarzify.com/#track-order" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 20px 45px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(248, 86, 6, 0.3);">Track My Order Now</a>
                             </div>
 
                         </div>
 
-                        <!-- Footer -->
-                        <div style="background-color: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #eee;">
-                            <p style="margin: 0 0 10px 0; color: #999; font-size: 13px;">© 2026 TARZIFY. All rights reserved.</p>
-                            <p style="margin: 0; color: #999; font-size: 12px;">This is an automated email, please do not reply directly.</p>
+                        <!-- Friendly Footer -->
+                        <div style="background-color: #1a1a1a; padding: 40px; text-align: center; color: #ffffff;">
+                            <div style="margin-bottom: 25px;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 900; letter-spacing: 1px;">QUESTIONS?</h4>
+                                <p style="margin: 0; font-size: 14px; opacity: 0.8; font-weight: 500;">Email us anytime at <a href="mailto:support@tarzify.com" style="color: #f85606; text-decoration: none; font-weight: 800; border-bottom: 1px solid #f85606;">support@tarzify.com</a></p>
+                            </div>
+                            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px; font-size: 12px; opacity: 0.6; font-weight: 500;">
+                                <p style="margin: 0 0 8px 0; letter-spacing: 0.5px;">&copy; 2026 TARZIFY. HIGH QUALITY LIFESTYLE STORE.</p>
+                                <p style="margin: 0;">This is an automated confirmation email. Please do not reply.</p>
+                            </div>
                         </div>
 
                     </div>

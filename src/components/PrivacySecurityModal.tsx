@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { X, Lock, Key, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useToastStore } from '../stores/useToastStore';
 
 export const PrivacySecurityModal = ({ onClose }: { onClose: () => void }) => {
     const [password, setPassword] = useState('');
@@ -60,7 +61,7 @@ export const PrivacySecurityModal = ({ onClose }: { onClose: () => void }) => {
             console.error('Password Update Error:', err);
             setMessage({ type: 'error', text: err.message || "Failed to update password." });
             // Alert for user visibility
-            alert(`Update Failed: ${err.message}`);
+            useToastStore.getState().show(`Update Failed: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }

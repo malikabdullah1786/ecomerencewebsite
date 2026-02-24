@@ -103,7 +103,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: user.id,
-                    items: items.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price })),
+                    items: items.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price, image: item.image })),
                     total: finalTotal,
                     shippingAddress: `${formData.address}, ${formData.city}`,
                     phone: formData.phone,
@@ -165,13 +165,13 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
-                        className="w-32 h-32 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-500/20"
+                        className="w-20 md:w-32 h-20 md:h-32 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-500/20"
                     >
-                        <CheckCircle2 className="w-16 h-16" />
+                        <CheckCircle2 className="w-10 md:w-16 h-10 md:h-16" />
                     </motion.div>
 
                     <div className="space-y-4">
-                        <h1 className="text-5xl font-black tracking-tighter text-white">Order Confirmed!</h1>
+                        <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-white">Order Confirmed!</h1>
                         <p className="text-lg opacity-60 font-medium">Thank you for shopping. Your order has been placed successfully.</p>
                     </div>
 
@@ -194,16 +194,16 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
     }
 
     return (
-        <div className="min-h-screen bg-background pt-32 pb-24 px-6">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16">
+        <div className="min-h-screen bg-background pt-24 md:pt-32 pb-24 px-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
 
                 {/* Left: Checkout Form */}
-                <div className="lg:col-span-8 space-y-12">
+                <div className="lg:col-span-8 space-y-8 md:space-y-12 order-2 lg:order-1">
                     <div className="flex items-center gap-4 mb-8">
                         <button onClick={onBack} className="p-2 hover:bg-foreground/5 rounded-full transition-colors">
                             <ArrowLeft className="w-5 h-5" />
                         </button>
-                        <h1 className="text-4xl font-black tracking-tighter uppercase italic">Checkout</h1>
+                        <h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase italic">Checkout</h1>
                     </div>
 
                     {/* Stepper */}
@@ -235,8 +235,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                     <h3 className="text-xl font-black">Shipping Address</h3>
                                 </div>
                                 <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label htmlFor="fullName" className="text-xs font-black uppercase tracking-widest opacity-30">Full Name</label>
+                                    <div className="space-y-1">
+                                        <label htmlFor="fullName" className="text-[10px] font-black uppercase tracking-widest opacity-30">Full Name</label>
                                         <input
                                             type="text"
                                             id="fullName"
@@ -245,11 +245,11 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             placeholder="John Doe"
                                             value={formData.fullName}
                                             onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                                            className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="phone" className="text-xs font-black uppercase tracking-widest opacity-30">Phone Number</label>
+                                    <div className="space-y-1">
+                                        <label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest opacity-30">Phone Number</label>
                                         <input
                                             type="tel"
                                             id="phone"
@@ -257,11 +257,11 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             autoComplete="tel"
                                             placeholder="+92 3XX XXXXXXX"
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
-                                    <div className="col-span-2 space-y-2">
-                                        <label htmlFor="address" className="text-xs font-black uppercase tracking-widest opacity-30">Address</label>
+                                    <div className="col-span-2 space-y-1">
+                                        <label htmlFor="address" className="text-[10px] font-black uppercase tracking-widest opacity-30">Address</label>
                                         <input
                                             type="text"
                                             id="address"
@@ -269,18 +269,18 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             autoComplete="street-address"
                                             placeholder="Street address, Apartment, etc."
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                            className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="city" className="text-xs font-black uppercase tracking-widest opacity-30">City</label>
+                                    <div className="space-y-1">
+                                        <label htmlFor="city" className="text-[10px] font-black uppercase tracking-widest opacity-30">City</label>
                                         <input
                                             type="text"
                                             id="city"
                                             name="city"
                                             autoComplete="address-level2"
                                             onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                            className="w-full glass border-none rounded-2xl p-4 focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                 </div>
@@ -326,7 +326,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                         </div>
                                     ) : (
                                         shippingRates.map(rate => (
-                                            <label key={rate.id} className={`flex items-center justify-between p-6 rounded-3xl cursor-pointer transition-all border-2 ${formData.shippingMethod === rate.id ? 'bg-primary/5 border-primary shadow-lg shadow-primary/5' : 'bg-foreground/5 border-transparent opacity-60'}`}>
+                                            <label key={rate.id} className={`flex items-center justify-between p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer transition-all border-2 ${formData.shippingMethod === rate.id ? 'bg-primary/5 border-primary shadow-lg shadow-primary/5' : 'bg-foreground/5 border-transparent opacity-60'}`}>
                                                 <div className="flex items-center gap-4">
                                                     <input
                                                         type="radio"
@@ -364,16 +364,16 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                     <div className="space-y-4">
                                         <div
                                             onClick={() => setFormData({ ...formData, paymentMethod: 'fastpay', shippingMethod: 'fastpay' })}
-                                            className={`p-6 rounded-3xl border-2 cursor-pointer transition-all ${formData.paymentMethod === 'fastpay' ? 'border-primary bg-primary/5' : 'border-white/10 glass order-2 opacity-50'}`}
+                                            className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 cursor-pointer transition-all ${formData.paymentMethod === 'fastpay' ? 'border-primary bg-primary/5' : 'border-white/10 glass order-2 opacity-50'}`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2 shadow-sm">
-                                                        <span className="text-orange-500 font-black text-xl">FP</span>
+                                                <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-xl flex items-center justify-center p-2 shadow-sm flex-shrink-0">
+                                                        <span className="text-orange-500 font-black text-lg md:text-xl">FP</span>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-black">FastPay / Cards</p>
-                                                        <p className="text-xs opacity-50">Secure online payment</p>
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-sm md:text-base truncate">FastPay / Cards</p>
+                                                        <p className="text-[10px] md:text-xs opacity-50 truncate">Secure online payment</p>
                                                     </div>
                                                 </div>
                                                 {formData.paymentMethod === 'fastpay' && <CheckCircle2 className="text-primary w-6 h-6" />}
@@ -395,16 +395,16 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
 
                                         <div
                                             onClick={() => setFormData({ ...formData, paymentMethod: 'cod', shippingMethod: 'cod' })}
-                                            className={`p-6 rounded-3xl border-2 cursor-pointer transition-all ${formData.paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-white/10 glass order-2 opacity-50'}`}
+                                            className={`p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 cursor-pointer transition-all ${formData.paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-white/10 glass order-2 opacity-50'}`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-foreground/5 rounded-xl flex items-center justify-center p-2">
-                                                        <Truck className="w-6 h-6" />
+                                                <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-foreground/5 rounded-lg md:rounded-xl flex items-center justify-center p-2 flex-shrink-0">
+                                                        <Truck className="w-5 h-5 md:w-6 md:h-6" />
                                                     </div>
-                                                    <div>
-                                                        <p className="font-black">Cash on Delivery</p>
-                                                        <p className="text-xs opacity-50">Pay when you receive</p>
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-sm md:text-base truncate">Cash on Delivery</p>
+                                                        <p className="text-[10px] md:text-xs opacity-50 truncate">Pay when you receive</p>
                                                     </div>
                                                 </div>
                                                 {formData.paymentMethod === 'cod' && <CheckCircle2 className="text-primary w-6 h-6" />}
@@ -441,8 +441,8 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 </div>
 
                 {/* Right: Order Summary */}
-                <div className="lg:col-span-4">
-                    <div className="glass p-8 rounded-[2.5rem] border-white/5 sticky top-32 space-y-8 shadow-2xl">
+                <div className="lg:col-span-4 order-1 lg:order-2">
+                    <div className="glass p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-white/5 sticky top-32 space-y-6 md:space-y-8 shadow-2xl">
                         <h3 className="text-xl font-black uppercase tracking-tighter">Summary</h3>
 
                         <div className="space-y-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -478,9 +478,9 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
                             <p className="text-[10px] font-black uppercase tracking-widest text-primary text-center">Premium Courier Partners</p>
                             <div className="flex justify-center gap-4 mt-2 opacity-50 grayscale transition-all hover:grayscale-0">
-                                <span className="text-[10px] font-bold">TCS</span>
-                                <span className="text-[10px] font-bold">LEOPARDS</span>
-                                <span className="text-[10px] font-bold">POSTEX</span>
+                                <span className="text-[10px] font-bold text-foreground">TCS</span>
+                                <span className="text-[10px] font-bold text-foreground">LEOPARDS</span>
+                                <span className="text-[10px] font-bold text-foreground">POSTEX</span>
                             </div>
                         </div>
                     </div>

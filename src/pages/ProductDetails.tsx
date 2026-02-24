@@ -307,6 +307,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                 title={product.name}
                 description={product.description?.substring(0, 160) || `Buy ${product.name} at Tarzify.`}
                 image={product.image_url}
+                url={`https://tarzify.com/${generateProductURL(product.name, product.sku)}`}
                 type="product"
             />
             <div className="max-w-7xl mx-auto">
@@ -458,14 +459,18 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                         {/* Perks */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 border-t border-white/10">
                             {[
-                                { icon: Truck, label: 'Free Delivery' },
-                                { icon: ShieldCheck, label: 'Secure Payment' },
-                                { icon: RefreshCcw, label: 'Easy Returns' }
-                            ].map(({ icon: Icon, label }) => (
-                                <div key={label} className="flex flex-col items-center text-center gap-2 p-4 glass rounded-3xl">
-                                    <Icon className="w-5 h-5 text-primary" />
+                                { icon: Truck, label: 'Fast Shipping', hash: 'shipping-policy' },
+                                { icon: ShieldCheck, label: 'Secure Payment', hash: 'privacy' },
+                                { icon: RefreshCcw, label: 'Easy Returns', hash: 'returns' }
+                            ].map(({ icon: Icon, label, hash }) => (
+                                <button
+                                    key={label}
+                                    onClick={() => window.location.hash = hash}
+                                    className="flex flex-col items-center text-center gap-2 p-4 glass rounded-3xl hover:bg-white/10 hover:scale-105 transition-all group"
+                                >
+                                    <Icon className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">{label}</span>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     </div>

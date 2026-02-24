@@ -34,14 +34,21 @@ export const Navbar = ({
         >
             <nav className="max-w-7xl mx-auto glass rounded-full px-6 py-3 flex items-center justify-between shadow-2xl border-white/10">
                 <div className="flex items-center gap-8">
-                    <h2
+                    <div
                         onClick={() => window.location.reload()}
-                        className="text-4xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent cursor-pointer hover:scale-105 transition-transform"
+                        className="flex items-center gap-3 cursor-pointer group"
                     >
-                        TARZIFY
-                    </h2>
+                        <img
+                            src="/logo.png"
+                            alt="TARZIFY Logo"
+                            className="h-8 md:h-10 w-8 md:w-10 rounded-full object-cover border border-white/10 group-hover:scale-105 transition-transform shadow-lg"
+                        />
+                        <span className="text-2xl md:text-3xl font-black tracking-tighter bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent group-hover:scale-105 transition-transform">
+                            TARZIFY
+                        </span>
+                    </div>
                     <div className="hidden md:flex items-center gap-6">
-                        {['Home', 'Shop', 'Flash Sale', 'Categories'].map((item) => (
+                        {['Home', 'Shop', 'Categories'].map((item) => (
                             <a
                                 key={item}
                                 href={item === 'Home' ? '#' : item === 'Categories' ? '#categories' : '#'}
@@ -90,7 +97,7 @@ export const Navbar = ({
                             type="text"
                             id="search"
                             name="search"
-                            placeholder="Search Tarzify..."
+                            placeholder="Search TARZIFY..."
                             onChange={(e) => onSearch(e.target.value)}
                             className="bg-transparent border-none focus:outline-none text-sm px-2 w-32 lg:w-48"
                         />
@@ -207,7 +214,7 @@ export const Navbar = ({
                             </div>
 
                             <div className="flex flex-col gap-4">
-                                {['Home', 'Shop', 'Flash Sale', 'Categories'].map((item) => (
+                                {['Home', 'Shop', 'Categories'].map((item) => (
                                     <a
                                         key={item}
                                         href={item === 'Home' ? '#' : item === 'Categories' ? '#categories' : '#'}

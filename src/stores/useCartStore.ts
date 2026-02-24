@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useToastStore } from './useToastStore';
 
 interface CartItem {
     id: number;
@@ -33,7 +34,7 @@ export const useCartStore = create<CartState>()(
                 let newItems;
                 if (existingItem) {
                     if (existingItem.quantity >= availableStock) {
-                        alert(`Only ${availableStock} units available in stock.`);
+                        useToastStore.getState().show(`Only ${availableStock} units available in stock.`, 'error');
                         return;
                     }
                     newItems = currentItems.map(item =>
@@ -55,7 +56,7 @@ export const useCartStore = create<CartState>()(
 
                 const newQuantity = item.quantity + change;
                 if (newQuantity > item.stock) {
-                    alert(`Only ${item.stock} units available.`);
+                    useToastStore.getState().show(`Only ${item.stock} units available.`, 'error');
                     return;
                 }
 

@@ -52,7 +52,8 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
                         <X className="w-6 h-6" />
                     </button>
 
-                    <div className="text-center mb-10">
+                    <div className="text-center mb-10 flex flex-col items-center">
+                        <img src="/logo.png" alt="TARZIFY Logo" className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shadow-2xl mb-4" />
                         <h2 className="text-4xl font-black italic tracking-tighter mb-4">TRACK YOUR ORDER</h2>
                         <p className="opacity-60">Enter your Order ID (e.g., AB123456) to see live status.</p>
                     </div>

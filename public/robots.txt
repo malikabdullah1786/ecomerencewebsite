@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://your-domain.com/sitemap.xml
+# Specifically allow Googlebot-Image to index branding for search result favicons
+User-agent: Googlebot-Image
+Allow: /logo.png
+Allow: /logo-circular.png
+Allow: /favicon.ico
+Allow: /assets/
+
+Sitemap: https://tarzify.com/sitemap.xml

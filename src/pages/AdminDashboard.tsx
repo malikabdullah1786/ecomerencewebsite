@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2 } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
 import { useAdminStats } from '../hooks/useAdminStats';
 import { ProductForm } from '../components/ProductForm';
+import { useToastStore } from '../stores/useToastStore';
 
 export const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -14,6 +15,7 @@ export const AdminDashboard = () => {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [localStock, setLocalStock] = useState<Record<number, number>>({});
     const [showAddProduct, setShowAddProduct] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     // Data States
     const [orders, setOrders] = useState([] as any[]);
@@ -52,48 +54,81 @@ export const AdminDashboard = () => {
                 .eq('id', id);
 
             if (error) throw error;
+            useToastStore.getState().show('Stock updated successfully', 'success');
             await refetch();
         } catch (err) {
-            alert((err as Error).message);
+            useToastStore.getState().show((err as Error).message, 'error');
         } finally {
             setUpdatingId(null);
         }
     };
 
+    const handleSeed = async () => {
+        if (!confirm('This will seed 8 demo products. Continue?')) return;
+        setDataLoading(true);
+        try {
+            const { VITE_API_URL } = import.meta.env;
+            const res = await fetch(`${VITE_API_URL}/setup/seed`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                useToastStore.getState().show('Success: ' + data.message, 'success');
+                await refetch();
+                await refetchStats();
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (err: any) {
+            useToastStore.getState().show('Seed failed: ' + err.message, 'error');
+        } finally {
+            setDataLoading(false);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-background flex pt-20">
+        <div className="min-h-screen bg-transparent flex pt-20">
             {/* Sidebar */}
-            <div className="w-64 border-r border-foreground/5 p-6 flex flex-col gap-2">
-                <h3 className="text-xs font-black uppercase tracking-widest opacity-30 mb-4 px-4">Menu</h3>
-                <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
+            <div className={`fixed lg:relative inset-y-0 left-0 z-[110] w-64 border-r border-foreground/5 p-6 flex flex-col gap-2 bg-background transition-transform duration-300 lg:translate-x-0 ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="flex items-center justify-between mb-8 lg:mb-4 px-4">
+                    <h3 className="text-xs font-black uppercase tracking-widest opacity-30">Menu</h3>
+                    <button onClick={() => setShowMobileMenu(false)} className="lg:hidden p-2 hover:bg-foreground/5 rounded-full"><X className="w-5 h-5" /></button>
+                </div>
+                <button onClick={() => { setActiveTab('overview'); setShowMobileMenu(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
                     <LayoutDashboard className="w-5 h-5" />
                     <span className="font-bold">Overview</span>
                 </button>
-                <button onClick={() => setActiveTab('inventory')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'inventory' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
+                <button onClick={() => { setActiveTab('inventory'); setShowMobileMenu(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'inventory' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
                     <Package className="w-5 h-5" />
                     <span className="font-bold">Inventory</span>
                 </button>
-                <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
+                <button onClick={() => { setActiveTab('orders'); setShowMobileMenu(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
                     <ShoppingBag className="w-5 h-5" />
                     <span className="font-bold">Orders</span>
                 </button>
-                <button onClick={() => setActiveTab('customers')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'customers' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
+                <button onClick={() => { setActiveTab('customers'); setShowMobileMenu(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === 'customers' ? 'bg-primary text-white shadow-lg' : 'hover:bg-foreground/5 opacity-60'}`}>
                     <Users className="w-5 h-5" />
                     <span className="font-bold">Customers</span>
                 </button>
             </div>
 
             {/* Main Content */}
-            <div className="flex-grow p-10 overflow-y-auto">
-                <div className="flex items-center justify-between mb-12">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tighter mb-2">Admin Dashboard</h1>
-                        <p className="text-sm opacity-50 font-medium">Manage your store operations and metrics.</p>
+            <div className="flex-grow p-4 md:p-10 overflow-y-auto w-full">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 md:mb-12 gap-4">
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <button onClick={() => setShowMobileMenu(true)} className="lg:hidden p-3 glass rounded-xl">
+                            <Menu className="w-6 h-6" />
+                        </button>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black tracking-tighter mb-1 md:mb-2 italic uppercase">Admin Dashboard</h1>
+                            <p className="text-[10px] sm:text-sm opacity-50 font-medium">Store operations and metrics.</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 ml-auto sm:ml-0">
                         <button className="p-3 glass rounded-full hover:scale-110 transition-transform relative">
                             <Bell className="w-5 h-5" />
-                            <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full" />
+                            <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
                         </button>
                         <button className="p-3 glass rounded-full hover:scale-110 transition-transform">
                             <Settings className="w-5 h-5" />
@@ -128,15 +163,21 @@ export const AdminDashboard = () => {
 
                 {activeTab === 'inventory' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="relative w-80">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="relative w-full sm:w-80">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" />
-                                <input type="text" placeholder="Search products..." className="w-full bg-foreground/5 border-none rounded-xl py-3 pl-10 pr-4 outline-none focus:ring-2 ring-primary/30" />
+                                <input type="text" placeholder="Search products..." className="w-full bg-foreground/5 border-none rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 ring-primary/30" />
                             </div>
-                            <button onClick={() => setShowAddProduct(true)} className="bg-primary text-white font-black px-6 py-3 rounded-xl flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/20">
-                                <Plus className="w-4 h-4" />
-                                Add Product
-                            </button>
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <button onClick={handleSeed} disabled={productsLoading || dataLoading} className="w-full sm:w-auto bg-foreground/10 text-foreground font-black px-6 py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-foreground/20 transition-all border border-foreground/5">
+                                    <ArrowUpRight className="w-4 h-4" />
+                                    <span className="uppercase tracking-tighter italic">Seed Data</span>
+                                </button>
+                                <button onClick={() => setShowAddProduct(true)} className="w-full sm:w-auto bg-primary text-white font-black px-8 py-4 rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20">
+                                    <Plus className="w-5 h-5" />
+                                    <span className="uppercase tracking-tighter italic">Add Product</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="glass rounded-[2rem] border-white/5 overflow-hidden">

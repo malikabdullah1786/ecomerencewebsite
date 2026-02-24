@@ -18,6 +18,7 @@ export interface Product {
     description?: string;
     image_urls?: string[];
     avg_rating?: number;
+    compare_at_price?: number;
 }
 
 interface ProductState {

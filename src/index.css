@@ -19,19 +19,21 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 19 96% 50%;
+    /* Daraz Orange #f85606 */
     --secondary: 210 40% 96.1%;
-    --accent: 210 40% 96.1%;
+    --accent: 19 96% 50%;
     --card: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
+    --daraz-orange: 19 96% 50%;
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
+    --primary: 19 96% 60%;
     --secondary: 217.2 32.6% 17.5%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 19 96% 60%;
     --card: 222.2 84% 8%;
     --border: 217.2 32.6% 17.5%;
   }
@@ -59,4 +61,13 @@ body {
 
 ::-webkit-scrollbar-thumb {
   @apply bg-primary/20 hover:bg-primary/40 rounded-full transition-colors;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

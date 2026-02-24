@@ -56,6 +56,7 @@ interface ProductForm {
     image_urls: string[];
     description: string;
     is_returnable: boolean;
+    compare_at_price?: string | number;
 }
 
 export const MerchantDashboard = () => {
@@ -80,7 +81,8 @@ export const MerchantDashboard = () => {
         image_url: '',
         image_urls: [],
         description: '',
-        is_returnable: true
+        is_returnable: true,
+        compare_at_price: ''
     });
     const [editingProduct, setEditingProduct] = useState<ProductForm | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -343,10 +345,11 @@ export const MerchantDashboard = () => {
                 price: typeof newProduct.price === 'string' ? parseFloat(newProduct.price) : newProduct.price,
                 stock: typeof newProduct.stock === 'string' ? parseInt(newProduct.stock) : newProduct.stock,
                 category: newProduct.category,
-                image_url: newProduct.image_url,
+                image_url: newProduct.image_url || (newProduct.image_urls?.[0] || ''),
                 image_urls: newProduct.image_urls,
                 description: newProduct.description,
-                is_returnable: newProduct.is_returnable
+                is_returnable: newProduct.is_returnable,
+                compare_at_price: newProduct.compare_at_price ? (typeof newProduct.compare_at_price === 'string' ? parseFloat(newProduct.compare_at_price) : newProduct.compare_at_price) : null
             });
 
             if (error) throw error;
@@ -378,7 +381,8 @@ export const MerchantDashboard = () => {
                     image_url: editingProduct.image_url,
                     image_urls: editingProduct.image_urls,
                     description: editingProduct.description,
-                    is_returnable: editingProduct.is_returnable
+                    is_returnable: editingProduct.is_returnable,
+                    compare_at_price: editingProduct.compare_at_price ? (typeof editingProduct.compare_at_price === 'string' ? parseFloat(editingProduct.compare_at_price) : editingProduct.compare_at_price) : null
                 })
                 .eq('id', editingProduct.id);
 
@@ -507,7 +511,7 @@ export const MerchantDashboard = () => {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex pt-20">
-            {showQR && <QRScannerPopup onScan={(sku) => { alert('Scanned SKU: ' + sku); setShowQR(false); }} onClose={() => setShowQR(false)} />}
+            {showQR && <QRScannerPopup onScan={(sku) => { useToastStore.getState().show('Scanned SKU: ' + sku, 'success'); setShowQR(false); }} onClose={() => setShowQR(false)} />}
 
             {/* Add Modal */}
             <AnimatePresence>
@@ -540,6 +544,10 @@ export const MerchantDashboard = () => {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Price (Rs.)</label>
                                     <input required type="number" placeholder="0.00" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Original Price (Was)</label>
+                                    <input type="number" placeholder="Optional" value={newProduct.compare_at_price} onChange={e => setNewProduct({ ...newProduct, compare_at_price: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Stock</label>
@@ -659,6 +667,10 @@ export const MerchantDashboard = () => {
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Price (Rs.)</label>
                                     <input required type="number" value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Original Price (Was)</label>
+                                    <input type="number" value={editingProduct.compare_at_price} onChange={e => setEditingProduct({ ...editingProduct, compare_at_price: e.target.value })} className="w-full bg-foreground/5 border-2 border-transparent focus:border-primary/30 rounded-2xl p-4 outline-none transition-all" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60">Stock</label>
@@ -812,7 +824,7 @@ export const MerchantDashboard = () => {
             </div>
 
             {/* Main Content */}
-            <div className="flex-grow p-6 lg:p-12 overflow-y-auto">
+            <div className="flex-grow p-4 md:p-8 lg:p-12 overflow-y-auto w-full">
                 <div className="flex justify-between items-center mb-12">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setShowMobileMenu(true)} className="lg:hidden p-4 glass rounded-2xl">

@@ -1,0 +1,22 @@
+{
+    "name": "Tarzify | Premium Lifestyle Store",
+    "short_name": "Tarzify",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "any",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/logo.png",
+            "sizes": "any",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "theme_color": "#1e3a8a",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "start_url": "/"
+}

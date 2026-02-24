@@ -15,10 +15,6 @@ export const Hero = () => {
             { opacity: 0, y: 100 },
             {
                 opacity: 1,
-
-
-
-                
                 y: 0,
                 duration: 1.5,
                 ease: 'power4.out',
@@ -41,26 +37,42 @@ export const Hero = () => {
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.8 }}
+                    className="flex flex-col items-center"
                 >
-                    <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold tracking-widest uppercase mb-6 inline-block">
-                        Flash Sale Now Live
-                    </span>
-                    <h1 className="text-6xl md:text-8xl font-black mb-8 leading-[0.9] tracking-tighter">
-                        Elevate Your <br />
-                        <span className="bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent italic">
-                            Shopping Experience
+                    <h1 className="font-black mb-12 tracking-tighter flex flex-col items-center uppercase leading-none overflow-visible">
+                        <span className="inline-block text-[5rem] md:text-[10rem] bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent italic pb-14 leading-none z-20">
+                            TARZIFY
                         </span>
+
+                        <div className="relative group px-4 -mt-12 z-10 overflow-hidden text-center">
+                            <span className="text-[2.4rem] md:text-[5.4rem] text-foreground block leading-none">
+                                Premium
+                            </span>
+                            <motion.div
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-30 z-10 pointer-events-none"
+                                animate={{ x: ['-150%', '150%'] }}
+                                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                            />
+                        </div>
+
+                        <div className="relative group px-4 -mt-2 z-0 overflow-hidden text-center">
+                            <span className="text-[1.2rem] md:text-[2.7rem] bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-gradient bg-clip-text text-transparent italic leading-none">
+                                Lifestyle Store
+                            </span>
+                            <motion.div
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-30 z-10 pointer-events-none"
+                                animate={{ x: ['-150%', '150%'] }}
+                                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                            />
+                        </div>
                     </h1>
-                    <p className="text-xl text-foreground/60 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-                        Discover a curated collection of premium products. Fast delivery within Pakistan via Leopard, TCS, and Postex. Secure payments via FastPay.
+                    <p className="text-xl text-foreground/60 max-w-3xl mx-auto mb-10 leading-relaxed font-medium">
+                        Discover a complete shopping ecosystem where premium quality meets unparalleled convenience. Whether it’s daily luxury or unique lifestyle pieces, enjoy a fully integrated shopping experience with rapid, tracked delivery across every corner of Pakistan.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <button className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-full font-black text-lg hover:scale-105 transition-transform shadow-[0_20px_50px_rgba(8,_112,_184,_0.3)]">
+                        <button className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 bg-primary text-white rounded-full font-black text-base md:text-lg hover:scale-105 transition-transform shadow-[0_20px_50px_rgba(8,_112,_184,_0.3)]">
                             Shop the Collection
-                        </button>
-                        <button className="w-full sm:w-auto px-10 py-5 glass rounded-full font-black text-lg hover:bg-white/10 transition-all border border-white/20">
-                            View Flash Sale
                         </button>
                     </div>
                 </motion.div>

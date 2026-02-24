@@ -73,13 +73,8 @@ export const ProfilePage = () => {
                         </div>
                     </div>
 
-                    <div className="p-8 bg-primary rounded-[2.5rem] text-white shadow-2xl shadow-primary/30 relative overflow-hidden group">
-                        <div className="relative z-10 space-y-2">
-                            <h4 className="text-xl font-black italic">Premium Member 💎</h4>
-                            <p className="text-xs opacity-70 font-medium">Enjoy exclusive discounts and priority delivery.</p>
-                        </div>
-                        <Shield className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 transition-transform group-hover:scale-110" />
-                    </div>
+                    {/* Spacer for bottom */}
+                    <div className="h-20" />
                 </div>
 
                 {/* Order History */}
