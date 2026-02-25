@@ -41,36 +41,36 @@ export const Hero = () => {
                     className="flex flex-col items-center"
                 >
                     <h1 className="font-black mb-8 md:mb-12 tracking-tighter flex flex-col items-center uppercase leading-none overflow-visible">
-                        <div className="flex flex-wrap justify-center pb-8 md:pb-14">
+                        <div className="flex flex-wrap justify-center pb-6 md:pb-14 overflow-visible">
                             {"TARZIFY".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className="inline-block text-[4rem] sm:text-[6rem] md:text-[10rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none z-20"
+                                    className="inline-block text-[3.5rem] sm:text-[6rem] md:text-[10rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none z-20 font-black px-1 md:px-2"
                                 >
                                     {char}
                                 </motion.span>
                             ))}
                         </div>
 
-                        <div className="relative group px-4 -mt-8 md:-mt-12 z-10 overflow-hidden text-center flex flex-wrap justify-center">
+                        <div className="relative group px-4 -mt-6 md:-mt-12 z-10 overflow-visible text-center flex flex-wrap justify-center">
                             {"Premium".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className="text-[2rem] sm:text-[3.5rem] md:text-[5.4rem] text-foreground inline-block leading-none"
+                                    className="text-[1.8rem] sm:text-[3.5rem] md:text-[5.4rem] text-foreground inline-block leading-none font-bold px-1"
                                 >
                                     {char}
                                 </motion.span>
                             ))}
                         </div>
 
-                        <div className="relative group px-4 mt-2 z-0 overflow-hidden text-center flex flex-wrap justify-center">
+                        <div className="relative group px-4 mt-1 z-0 overflow-visible text-center flex flex-wrap justify-center translate-y-[-5px] md:translate-y-0">
                             {"Lifestyle Store".split("").map((char, index) => (
                                 <motion.span
                                     key={index}
                                     variants={charVariants}
-                                    className={`text-[1rem] sm:text-[1.8rem] md:text-[2.7rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none inline-block ${char === " " ? "mx-2" : ""}`}
+                                    className={`text-[0.9rem] sm:text-[1.8rem] md:text-[2.7rem] bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic leading-none inline-block font-bold px-1 ${char === " " ? "mx-1.5 md:mx-2" : ""}`}
                                 >
                                     {char}
                                 </motion.span>

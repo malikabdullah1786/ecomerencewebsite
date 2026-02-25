@@ -10,6 +10,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { ProductCard } from './components/ProductCard';
 import { CartDrawer } from './components/CartDrawer';
+import { useCartStore } from './stores/useCartStore';
 import { useProducts } from './hooks/useProducts';
 import { useAuthStore } from './stores/useAuthStore';
 import { AuthPage } from './pages/AuthPage';
@@ -43,6 +44,13 @@ function App() {
     useEffect(() => {
         initialize();
     }, []);
+
+    // Sync cart with products
+    useEffect(() => {
+        if (!loading && products.length > 0) {
+            useCartStore.getState().syncWithProducts(products.map(p => p.id));
+        }
+    }, [products, loading]);
 
     useEffect(() => {
         const lenis = new Lenis({
@@ -171,13 +179,13 @@ function App() {
         return (
             <main className="bg-gray-50/50 min-h-screen pb-20">
                 <Hero />
-                <section className="py-12 px-4 max-w-7xl mx-auto" id="categories">
-                    <div className="flex overflow-x-auto gap-3 pb-8 scrollbar-hide no-scrollbar">
+                <section className="py-8 md:py-12 px-4 max-w-7xl mx-auto" id="categories">
+                    <div className="flex overflow-x-auto gap-3 pb-10 no-scrollbar snap-x">
                         {categories.map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`px-6 py-2 rounded-full font-bold text-xs whitespace-nowrap border transition-all ${activeCategory === cat ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-white border-gray-100 text-gray-500 hover:border-primary/30'}`}
+                                className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest whitespace-nowrap border transition-all snap-start ${activeCategory === cat ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}`}
                             >
                                 {cat}
                             </button>
@@ -185,19 +193,22 @@ function App() {
                     </div>
 
                     {loading ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse rounded-xl border border-gray-100" />)}
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-6">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => <div key={i} className="aspect-[4/5] bg-white animate-pulse rounded-[2rem] border border-gray-100" />)}
                         </div>
                     ) : (
-                        <div className="space-y-12">
+                        <div className="space-y-16">
                             {Object.entries(groupedProducts).length === 0 ? (
-                                <div className="text-center py-20 opacity-30 font-black uppercase italic tracking-widest text-2xl">No Products Found</div>
+                                <div className="text-center py-24 glass rounded-[3rem] opacity-30 font-black uppercase italic tracking-[0.3em] text-2xl">No Products Found</div>
                             ) : (
                                 Object.entries(groupedProducts).map(([categoryName, catProducts]) => (
-                                    <div key={categoryName} className="space-y-6">
-                                        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                                            <h2 className="text-xl font-bold text-gray-800 uppercase tracking-tight">{categoryName}</h2>
-                                            <button onClick={() => setActiveCategory(categoryName)} className="text-xs font-bold text-primary hover:underline">View All</button>
+                                    <div key={categoryName} className="space-y-8">
+                                        <div className="flex items-center justify-between border-b-2 border-primary/10 pb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-2 h-8 bg-primary rounded-full" />
+                                                <h2 className="text-2xl md:text-3xl font-black text-black uppercase tracking-tighter italic">{categoryName}</h2>
+                                            </div>
+                                            <button onClick={() => setActiveCategory(categoryName)} className="text-[10px] font-black uppercase tracking-widest text-primary hover:tracking-[0.2em] transition-all">View All</button>
                                         </div>
                                         <div className="relative group/slider">
                                             <button
@@ -205,7 +216,7 @@ function App() {
                                                     const container = e.currentTarget.parentElement?.querySelector('.slider-container');
                                                     container?.scrollBy({ left: -400, behavior: 'smooth' });
                                                 }}
-                                                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white shadow-xl border border-gray-100 p-3 rounded-full hidden md:group-hover/slider:flex items-center justify-center text-primary hover:scale-110 transition-all active:scale-95"
+                                                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 bg-white shadow-2xl border border-gray-50 p-4 rounded-full hidden md:group-hover/slider:flex items-center justify-center text-primary hover:scale-110 transition-all active:scale-95"
                                             >
                                                 <ChevronLeft className="w-6 h-6" />
                                             </button>
@@ -214,13 +225,13 @@ function App() {
                                                     const container = e.currentTarget.parentElement?.querySelector('.slider-container');
                                                     container?.scrollBy({ left: 400, behavior: 'smooth' });
                                                 }}
-                                                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white shadow-xl border border-gray-100 p-3 rounded-full hidden md:group-hover/slider:flex items-center justify-center text-primary hover:scale-110 transition-all active:scale-95"
+                                                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-6 z-10 bg-white shadow-2xl border border-gray-50 p-4 rounded-full hidden md:group-hover/slider:flex items-center justify-center text-primary hover:scale-110 transition-all active:scale-95"
                                             >
                                                 <ChevronRight className="w-6 h-6" />
                                             </button>
-                                            <div className="slider-container flex overflow-x-auto gap-4 pb-4 no-scrollbar snap-x snap-mandatory scroll-smooth">
+                                            <div className="slider-container flex overflow-x-auto gap-4 md:gap-8 pb-6 no-scrollbar snap-x snap-mandatory scroll-smooth pr-6">
                                                 {catProducts.map((product) => (
-                                                    <div key={product.id} className="w-[200px] md:w-[280px] flex-shrink-0 snap-start">
+                                                    <div key={product.id} className="w-[180px] sm:w-[215px] md:w-[290px] flex-shrink-0 snap-start first:pl-2">
                                                         <ProductCard
                                                             id={product.id}
                                                             name={product.name}

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, User as UserIcon, Search, Menu, LogOut, Shield, LayoutDashboard, X } from 'lucide-react';
+import { ShoppingCart, User as UserIcon, Search, Menu, LogOut, Shield, LayoutDashboard, X, ChevronRight, Package } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useCartStore } from '../stores/useCartStore';
+import { useCartSync } from '../hooks/useCartSync';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export const Navbar = ({
@@ -14,6 +15,7 @@ export const Navbar = ({
     onLoginClick: () => void,
     onSearch: (query: string) => void
 }) => {
+    useCartSync(); // Initialize cart synchronization
     const cartItemsCount = useCartStore((state) => state.items.length);
     const { user, role, signOut } = useAuthStore();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -213,45 +215,95 @@ export const Navbar = ({
                                 <button onClick={() => setIsMenuOpen(false)} className="p-2 glass rounded-full"><X className="w-6 h-6" /></button>
                             </div>
 
-                            <div className="flex flex-col gap-4">
-                                {['Home', 'Shop', 'Categories'].map((item) => (
-                                    <a
-                                        key={item}
-                                        href={item === 'Home' ? '#' : item === 'Categories' ? '#categories' : '#'}
-                                        onClick={() => setIsMenuOpen(false)}
-                                        className="text-2xl font-black uppercase tracking-tighter italic hover:text-primary transition-colors"
-                                    >
-                                        {item}
-                                    </a>
-                                ))}
-                                <div className="h-px bg-foreground/10 my-4" />
-                                <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#track-order'; }} className="text-left text-lg font-black uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">Track Order</button>
+                            <div className="flex-1 flex flex-col gap-8 overflow-y-auto pr-2 no-scrollbar">
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Navigation</p>
+                                    <div className="flex flex-col gap-3">
+                                        {['Home', 'Shop'].map((item) => (
+                                            <a
+                                                key={item}
+                                                href={item === 'Home' ? '#' : '#'}
+                                                onClick={() => setIsMenuOpen(false)}
+                                                className="text-3xl font-black uppercase tracking-tighter italic hover:text-primary transition-colors flex items-center justify-between group"
+                                            >
+                                                {item}
+                                                <ChevronRight className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
 
-                                {user && (
-                                    <>
-                                        {role === 'merchant' && (
-                                            <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#merchant'; }} className="text-left text-lg font-black uppercase tracking-widest text-primary">Merchant Panel</button>
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Categories</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['Men', 'Women', 'Kids', 'Sport', 'Tech'].map((cat) => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => { setIsMenuOpen(false); window.location.hash = '#categories'; }}
+                                                className="px-4 py-2 bg-foreground/5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all border border-transparent hover:border-primary/20"
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Account & Support</p>
+                                    <div className="grid grid-cols-1 gap-2.5">
+                                        <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#track-order'; }} className="flex items-center gap-3 h-14 px-6 bg-foreground/5 rounded-2xl hover:bg-primary/5 transition-all text-xs font-black uppercase tracking-widest">
+                                            <Package className="w-5 h-5 opacity-50" />
+                                            Track Order
+                                        </button>
+
+                                        {user ? (
+                                            <>
+                                                {(role === 'merchant' || role === 'admin') && (
+                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#merchant'; }} className="flex items-center gap-3 h-14 px-6 bg-primary/10 text-primary rounded-2xl hover:scale-[1.02] transition-all text-xs font-black uppercase tracking-widest">
+                                                        <LayoutDashboard className="w-5 h-5" />
+                                                        Merchant Panel
+                                                    </button>
+                                                )}
+                                                {role === 'admin' && (
+                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 h-14 px-6 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs font-black uppercase tracking-widest">
+                                                        <Shield className="w-5 h-5" />
+                                                        Admin Panel
+                                                    </button>
+                                                )}
+                                                <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#profile'; }} className="flex items-center gap-3 h-14 px-6 bg-foreground/5 rounded-2xl hover:bg-primary/5 transition-all text-xs font-black uppercase tracking-widest">
+                                                    <UserIcon className="w-5 h-5 opacity-50" />
+                                                    My Profile
+                                                </button>
+                                                <button onClick={handleSignOut} className="flex items-center gap-3 h-14 px-6 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all text-xs font-black uppercase tracking-widest">
+                                                    <LogOut className="w-5 h-5 opacity-50" />
+                                                    Log Out
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button onClick={() => { setIsMenuOpen(false); onLoginClick(); }} className="flex items-center gap-3 h-16 px-8 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs font-black uppercase tracking-widest justify-center">
+                                                Sign In / Register
+                                            </button>
                                         )}
-                                        {role === 'admin' && (
-                                            <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#admin'; }} className="text-left text-lg font-black uppercase tracking-widest text-primary">Admin Panel</button>
-                                        )}
-                                        <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#profile'; }} className="text-left text-lg font-black uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">My Profile</button>
-                                        <button onClick={handleSignOut} className="text-left text-lg font-black uppercase tracking-widest text-red-500">Log Out</button>
-                                    </>
-                                )}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="mt-auto pt-8 border-t border-white/5">
-                                <div className="flex items-center gap-3 px-4 py-2 bg-foreground/5 rounded-2xl mb-6">
+                            <div className="mt-auto pt-6 border-t border-white/5 space-y-6">
+                                <div className="flex items-center gap-3 px-5 py-3 bg-foreground/5 rounded-full focus-within:ring-2 ring-primary/30 transition-all shadow-inner">
                                     <Search className="w-4 h-4 opacity-50" />
                                     <input
                                         type="text"
-                                        placeholder="Search products..."
+                                        placeholder="Search TARZIFY..."
                                         onChange={(e) => onSearch(e.target.value)}
-                                        className="bg-transparent border-none focus:outline-none text-xs flex-grow"
+                                        className="bg-transparent border-none focus:outline-none text-xs flex-grow font-medium"
                                     />
                                 </div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 text-center">TARZIFY LUXURY &copy; 2026</p>
+                                <div className="flex justify-center gap-6 opacity-30">
+                                    <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">Instagram</button>
+                                    <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">TikTok</button>
+                                    <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">Support</button>
+                                </div>
+                                <p className="text-[9px] font-black uppercase tracking-[0.4em] opacity-20 text-center">TARZIFY LUXURY &copy; 2026</p>
                             </div>
                         </motion.div>
                     </>

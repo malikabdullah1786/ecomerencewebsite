@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from './useAuthStore';
 import { useToastStore } from './useToastStore';
 
 interface CartItem {
@@ -18,6 +20,8 @@ interface CartState {
     removeItem: (id: number) => void;
     updateQuantity: (id: number, change: number) => void;
     clearCart: () => void;
+    setItems: (items: CartItem[]) => void;
+    syncWithProducts: (availableProductIds: number[]) => void;
     total: number;
 }
 
@@ -51,10 +55,33 @@ export const useCartStore = create<CartState>()(
                     }];
                 }
                 set({ items: newItems, total: newItems.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0) });
+
+                // Sync to DB if logged in
+                const user = (useAuthStore.getState() as any).user; // Simple way to check user without hook in store
+                if (user) {
+                    const item = newItems.find(i => i.id === product.id);
+                    if (item) {
+                        supabase.from('cart_items').upsert({
+                            user_id: user.id,
+                            product_id: item.id,
+                            quantity: item.quantity
+                        }, { onConflict: 'user_id,product_id' }).then();
+                    }
+                }
             },
             removeItem: (id) => {
                 const newItems = get().items.filter(item => item.id !== id);
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
+
+                // Sync to DB if logged in
+                const user = (useAuthStore.getState() as any).user;
+                if (user) {
+                    supabase.from('cart_items')
+                        .delete()
+                        .eq('user_id', user.id)
+                        .eq('product_id', id)
+                        .then();
+                }
             },
             updateQuantity: (id, change) => {
                 const currentItems = get().items;
@@ -75,6 +102,20 @@ export const useCartStore = create<CartState>()(
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
             },
             clearCart: () => set({ items: [], total: 0 }),
+            setItems: (items) => set({
+                items,
+                total: items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+            }),
+            syncWithProducts: (availableProductIds) => {
+                const currentItems = get().items;
+                const newItems = currentItems.filter(item => availableProductIds.includes(item.id));
+                if (newItems.length !== currentItems.length) {
+                    set({
+                        items: newItems,
+                        total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+                    });
+                }
+            },
             total: 0
         }),
         { name: 'cart-storage' }

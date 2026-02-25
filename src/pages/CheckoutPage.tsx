@@ -245,7 +245,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             placeholder="John Doe"
                                             value={formData.fullName}
                                             onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border border-foreground/20 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -257,7 +257,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             autoComplete="tel"
                                             placeholder="+92 3XX XXXXXXX"
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border border-foreground/20 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                     <div className="col-span-2 space-y-1">
@@ -269,7 +269,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             autoComplete="street-address"
                                             placeholder="Street address, Apartment, etc."
                                             onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border border-foreground/20 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -280,7 +280,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             name="city"
                                             autoComplete="address-level2"
                                             onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                            className="w-full glass border-none rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
+                                            className="w-full glass border border-foreground/20 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base focus:ring-2 ring-primary/30 outline-none"
                                         />
                                     </div>
                                 </div>
@@ -382,7 +382,7 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                                             {formData.paymentMethod === 'fastpay' && (
                                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-6 pt-6 border-t border-primary/10 space-y-4">
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40">Card Details (Dummy)</label>
+                                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40">Card Details</label>
                                                         <input type="text" placeholder="XXXX XXXX XXXX XXXX" className="w-full bg-foreground/5 border-none rounded-xl p-4 font-mono tracking-widest outline-none focus:ring-2 ring-primary/30" />
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">

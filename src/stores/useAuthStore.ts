@@ -21,31 +21,56 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ user: null, role: null });
     },
     initialize: async () => {
-        const { data: { session } } = await supabase.auth.getSession();
+        try {
+            console.log('🔄 Initializing Auth Store...');
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        const fetchRole = async (userId: string) => {
-            const { data } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', userId)
-                .single();
-            return data?.role || 'customer';
-        };
+            if (sessionError) {
+                console.error('❌ Session fetch error:', sessionError);
+                throw sessionError;
+            }
 
-        if (session?.user) {
-            const role = await fetchRole(session.user.id);
-            set({ user: session.user, role, loading: false });
-        } else {
-            set({ user: null, role: null, loading: false });
-        }
+            const fetchRole = async (userId: string) => {
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', userId)
+                        .single();
 
-        supabase.auth.onAuthStateChange(async (_event, session) => {
+                    if (error) {
+                        console.warn('⚠️ Profile fetch error (might be first login):', error.message);
+                        return 'customer';
+                    }
+                    return data?.role || 'customer';
+                } catch (e) {
+                    console.error('❌ Unexpected error fetching role:', e);
+                    return 'customer';
+                }
+            };
+
             if (session?.user) {
+                console.log('👤 User session found:', session.user.email);
                 const role = await fetchRole(session.user.id);
+                console.log('🎭 User role:', role);
                 set({ user: session.user, role, loading: false });
             } else {
+                console.log('📭 No active session');
                 set({ user: null, role: null, loading: false });
             }
-        });
+
+            supabase.auth.onAuthStateChange(async (event, session) => {
+                console.log('🔄 Auth state changed:', event, session?.user?.email);
+                if (session?.user) {
+                    const role = await fetchRole(session.user.id);
+                    set({ user: session.user, role, loading: false });
+                } else {
+                    set({ user: null, role: null, loading: false });
+                }
+            });
+        } catch (err) {
+            console.error('❌ Auth initialization failed:', err);
+            set({ user: null, role: null, loading: false });
+        }
     },
 }));

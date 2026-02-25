@@ -6,11 +6,11 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(trackUrl)}`;
 
     return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex justify-center p-4 overflow-y-auto">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="bg-white text-black w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] my-8"
+                className="bg-white text-black w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] my-auto"
             >
                 {/* Header / Branding */}
                 <div className="bg-black p-10 text-white relative">

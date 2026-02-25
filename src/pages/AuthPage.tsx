@@ -18,6 +18,7 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
         setError(null);
 
         try {
+            console.log(`🔐 Attempting ${mode}...`, { email });
             if (mode === 'signup') {
                 const { error } = await supabase.auth.signUp({
                     email,
@@ -27,14 +28,24 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                         emailRedirectTo: window.location.origin
                     }
                 });
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Signup error:', error);
+                    throw error;
+                }
+                console.log('✅ Signup successful, verification email sent.');
                 useToastStore.getState().show('Verification email sent!', 'success');
             } else {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    console.error('❌ Login error:', error);
+                    throw error;
+                }
+                console.log('✅ Login successful:', data.user?.email);
+                useToastStore.getState().show('Welcome back!', 'success');
             }
         } catch (err: any) {
-            setError(err.message);
+            console.error('❌ Auth attempt failed:', err.message);
+            setError(err.message || 'An unexpected error occurred during authentication.');
         } finally {
             setLoading(false);
         }

@@ -50,6 +50,12 @@ body {
   overflow-x: hidden;
 }
 
+input,
+textarea,
+select {
+  @apply text-foreground placeholder:opacity-40 border border-foreground/10 focus:border-primary/50 transition-all outline-none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

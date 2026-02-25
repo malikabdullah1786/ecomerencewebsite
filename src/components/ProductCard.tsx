@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '../stores/useCartStore';
 import { generateProductURL } from '../lib/slugify';
@@ -22,7 +22,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard = (product: ProductCardProps) => {
-    const { id: _id, name, price, image, rating = 0, stock = 1, sku, image_urls = [], compare_at_price, onFly } = product;
+    const { name, price, image, category, stock = 1, sku, image_urls = [], compare_at_price, onFly } = product;
     const addItem = useCartStore((state) => state.addItem);
     const [mainImageError, setMainImageError] = useState(false);
     const [secondaryImageError, setSecondaryImageError] = useState(false);
@@ -47,7 +47,7 @@ export const ProductCard = (product: ProductCardProps) => {
             viewport={{ once: true }}
             whileHover={{ y: -4 }}
             onClick={() => { window.location.hash = generateProductURL(name, sku); }}
-            className={`group relative bg-white rounded-xl overflow-hidden border border-gray-100 flex flex-col h-full cursor-pointer hover:shadow-xl transition-all duration-300 ${isOOS ? 'opacity-90' : ''}`}
+            className={`group relative bg-white rounded-2xl md:rounded-[2rem] overflow-hidden border border-gray-100 flex flex-col h-full cursor-pointer hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] transition-all duration-500 ${isOOS ? 'opacity-90' : ''}`}
         >
             {/* Image Container */}
             <div className="relative aspect-square overflow-hidden bg-gray-50 group">
@@ -56,7 +56,7 @@ export const ProductCard = (product: ProductCardProps) => {
                         src={mainImageError ? PLACEHOLDER_IMAGE : image}
                         alt={name}
                         onError={() => setMainImageError(true)}
-                        className={`w-full h-full object-cover transition-all duration-700 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
+                        className={`w-full h-full object-cover transition-all duration-1000 scale-100 group-hover:scale-110 ${(image_urls?.length ?? 0) > 1 ? 'group-hover:opacity-0' : ''}`}
                     />
                 )}
 
@@ -66,73 +66,59 @@ export const ProductCard = (product: ProductCardProps) => {
                         src={secondaryImageError ? PLACEHOLDER_IMAGE : image_urls![1]}
                         alt={name}
                         onError={() => setSecondaryImageError(true)}
-                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700"
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-1000 scale-110 group-hover:scale-100"
                     />
                 )}
 
-                {/* OOS Overlay */}
-                {isOOS && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-20">
-                        <span className="px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-sm">
-                            Out of Stock
+                {/* Badges Container */}
+                <div className="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                    {/* OOS Overlay */}
+                    {isOOS && (
+                        <span className="px-3 py-1 bg-black text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full backdrop-blur-md">
+                            Sold Out
                         </span>
-                    </div>
-                )}
+                    )}
+                    {/* Discount Badge */}
+                    {discount > 0 && !isOOS && (
+                        <span className="px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">
+                            {discount}% OFF
+                        </span>
+                    )}
+                </div>
 
-                {/* Discount Badge */}
-                {discount > 0 && !isOOS && (
-                    <div className="absolute top-2 right-2 z-10 bg-[#f85606] text-white text-[10px] font-bold px-2 py-0.5 rounded-sm shadow-sm">
-                        -{discount}%
-                    </div>
-                )}
+                {/* Quick Add Overlay */}
+                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             </div>
 
             {/* Info Section */}
-            <div className="p-3 flex flex-col flex-grow">
-                <h3 className="text-sm font-medium text-gray-800 line-clamp-2 leading-snug mb-2 group-hover:text-[#f85606] transition-colors">
-                    {name}
-                </h3>
+            <div className="p-2.5 md:p-3.5 flex flex-col flex-grow">
+                <div className="flex flex-col gap-0.5 mb-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">{category}</p>
+                    <h3 className="text-xs md:text-sm font-black text-gray-800 line-clamp-2 leading-tight uppercase italic group-hover:text-primary transition-colors">
+                        {name}
+                    </h3>
+                </div>
 
-                <div className="mt-auto space-y-1">
+                <div className="mt-auto pt-2 border-t border-gray-50 flex items-end justify-between">
                     {/* Price Section */}
                     <div className="flex flex-col">
-                        <span className="text-xl font-bold text-[#f85606] leading-none">
+                        {compare_at_price && compare_at_price > price && (
+                            <span className="text-[10px] text-gray-400 line-through font-bold">
+                                Rs. {compare_at_price.toLocaleString()}
+                            </span>
+                        )}
+                        <span className="text-base md:text-lg font-black italic tracking-tighter text-black leading-none">
                             Rs. {price.toLocaleString()}
                         </span>
-                        {compare_at_price && compare_at_price > price && (
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-gray-400 line-through">
-                                    Rs. {compare_at_price.toLocaleString()}
-                                </span>
-                                <span className="text-[10px] text-gray-800 font-medium">
-                                    -{discount}%
-                                </span>
-                            </div>
-                        )}
                     </div>
 
-                    {/* Rating & Actions */}
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-                        <div className="flex items-center gap-1">
-                            <div className="flex items-center gap-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                    <Star
-                                        key={i}
-                                        className={`w-2.5 h-2.5 ${i < Math.round(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`}
-                                    />
-                                ))}
-                            </div>
-                            <span className="text-[10px] text-gray-400">({rating > 0 ? rating.toFixed(1) : '0'})</span>
-                        </div>
-
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={isOOS}
-                            className={`p-1.5 rounded-lg transition-all active:scale-90 ${isOOS ? 'bg-gray-100 text-gray-300' : 'bg-orange-50 text-[#f85606] hover:bg-orange-100'}`}
-                        >
-                            <ShoppingCart className="w-4 h-4" />
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleAddToCart}
+                        disabled={isOOS}
+                        className={`p-2 md:p-2.5 rounded-xl transition-all active:scale-90 ${isOOS ? 'bg-gray-100 text-gray-300' : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-110'}`}
+                    >
+                        <ShoppingCart className="w-4 h-4 shadow-sm" />
+                    </button>
                 </div>
             </div>
         </motion.div>
