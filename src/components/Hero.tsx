@@ -1,8 +1,6 @@
-import { useRef } from 'react';
 import { motion, type Variants } from 'framer-motion';
 
 export const Hero = () => {
-    const textRef = useRef<HTMLDivElement>(null);
 
     const containerVariants: Variants = {
         hidden: { opacity: 0 },
@@ -33,7 +31,7 @@ export const Hero = () => {
             <div className="absolute top-1/4 left-1/4 w-64 md:w-96 h-64 md:h-96 bg-primary/20 rounded-full blur-[80px] md:blur-[100px] animate-pulse" />
             <div className="absolute bottom-1/4 right-1/4 w-64 md:w-96 h-64 md:h-96 bg-accent/20 rounded-full blur-[80px] md:blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
 
-            <div ref={textRef} className="container mx-auto px-4 md:px-6 text-center z-10">
+            <div className="container mx-auto px-4 md:px-6 text-center z-10">
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"

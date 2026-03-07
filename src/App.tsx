@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Lenis from '@studio-freight/lenis';
 import {
     ChevronRight,
@@ -22,9 +22,13 @@ import { ProductDetails } from './pages/ProductDetails';
 import { TrackOrder } from './components/TrackOrder';
 import { ProfilePage } from './pages/ProfilePage';
 import { PolicyPage } from './pages/PolicyPage';
+import { CategorySection } from './components/CategorySection';
+import { SeoHiddenLinks } from './components/SeoHiddenLinks';
 import { Footer } from './components/Footer';
 import { SEO } from './components/SEO';
 import { ToastContainer } from './components/ToastContainer';
+import { ResetPassword } from './pages/ResetPassword';
+import { useToastStore } from './stores/useToastStore';
 
 function App() {
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -34,10 +38,12 @@ function App() {
     const [showCheckout, setShowCheckout] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showTrackOrder, setShowTrackOrder] = useState(false);
-    const [showPolicy, setShowPolicy] = useState<any>(null);
+    const [trackOrderId, setTrackOrderId] = useState<string | null>(null);
+    const [showPolicy, setShowPolicy] = useState<'privacy' | 'returns' | 'shipping' | 'terms' | null>(null);
     const [viewProductId, setViewProductId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
+    const [showResetPassword, setShowResetPassword] = useState(false);
 
     // Pixel-based card width so overflow scroll always triggers (% fills container exactly — no overflow)
     const getCardWidth = () => {
@@ -71,6 +77,30 @@ function App() {
         }
     }, [products, loading]);
 
+    // Handle search auto-scroll and reset views
+    useEffect(() => {
+        if (searchQuery.trim().length > 0) {
+            // Reset full-page views to show search results
+            setViewProductId(null);
+            setShowAdmin(false);
+            setShowMerchant(false);
+            setShowPolicy(null);
+            setShowProfile(false);
+            setShowTrackOrder(false);
+
+            // Clear hash so we don't stay on a sub-page
+            if (window.location.hash && !window.location.hash.startsWith('#catalog')) {
+                window.location.hash = '';
+            }
+
+            // Smooth scroll to catalog
+            const catalogEl = document.getElementById('catalog');
+            if (catalogEl) {
+                catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [searchQuery]);
+
     useEffect(() => {
         const lenis = new Lenis({
             duration: 0.8,
@@ -101,11 +131,34 @@ function App() {
             setShowMerchant(hash === '#merchant' && (role === 'merchant' || role === 'admin'));
             setShowCheckout(hash === '#checkout');
             setShowProfile(hash === '#profile');
-            setShowTrackOrder(hash === '#track-order');
+            setShowProfile(hash === '#profile');
+            if (hash.startsWith('#track-order')) {
+                setShowTrackOrder(true);
+                const params = new URLSearchParams(hash.split('?')[1]);
+                const id = params.get('id');
+                setTrackOrderId(id);
+            } else {
+                setShowTrackOrder(false);
+                setTrackOrderId(null);
+            }
 
-            const policyTypes = ['privacy', 'returns', 'shipping-policy', 'terms'];
-            const matchedPolicy = policyTypes.find(t => hash === `#${t}`);
-            setShowPolicy(matchedPolicy ? (matchedPolicy === 'shipping-policy' ? 'shipping' : matchedPolicy) : null);
+            const policyTypes = ['privacy', 'returns', 'shipping', 'terms'] as const;
+            const matchedPolicy = policyTypes.find(t => hash.toLowerCase().includes(t));
+            setShowPolicy(matchedPolicy || null);
+
+            // Handle password recovery and errors from Supabase
+            if (hash.startsWith('#reset-password')) {
+                setShowResetPassword(true);
+            } else if (hash.includes('error=access_denied') || hash.includes('error_code=otp_expired')) {
+                const params = new URLSearchParams(hash.substring(1));
+                const errorMsg = params.get('error_description') || 'Access denied or link expired.';
+                useToastStore.getState().show(errorMsg, 'error');
+                // Clear the hash after showing error
+                window.location.hash = '';
+                setShowResetPassword(false);
+            } else {
+                setShowResetPassword(false);
+            }
 
             if (hash.startsWith('#product/')) {
                 const path = hash.replace('#product/', '').toUpperCase();
@@ -147,6 +200,7 @@ function App() {
         if (showPolicy) return <PolicyPage type={showPolicy} />;
         if (showAdmin && role === 'admin') return <AdminDashboard />;
         if (showMerchant && (role === 'merchant' || role === 'admin')) return <MerchantDashboard />;
+        if (showResetPassword) return <ResetPassword onComplete={() => window.location.hash = ''} />;
 
         if (viewProductId || window.location.hash.startsWith('#product/')) {
             const product = products.find(p => p.id === viewProductId);
@@ -188,12 +242,14 @@ function App() {
             const searchTerms = searchQuery.toLowerCase().split(' ').filter(t => t.length > 0);
             const productString = `${p.name} ${p.category} ${p.sku}`.toLowerCase();
             const matchesSearch = searchTerms.length === 0 || searchTerms.every(term => productString.includes(term));
-            const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
+
+            // If searching, ignore category filter to search global store
+            const matchesCategory = searchQuery.trim() !== '' || activeCategory === 'All' || p.category === activeCategory;
+
             const isAvailable = p.stock > 0;
             return matchesSearch && matchesCategory && isAvailable;
         });
 
-        const categories = ['All', ...new Set(products.map(p => p.category))];
 
         const groupedProducts = filteredProducts.reduce((acc: { [key: string]: typeof products }, product) => {
             const cat = product.category || 'Other';
@@ -203,33 +259,21 @@ function App() {
         }, {});
 
         return (
-            <main className="bg-gray-50/50 min-h-screen pb-20">
+            <main className="bg-gray-50/50 dark:bg-zinc-950 min-h-screen pb-20">
                 <Hero />
+                <CategorySection activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
 
-                <section className="py-8 md:py-12 px-5 max-w-7xl mx-auto" id="categories">
+                <section className="py-8 md:py-12 px-5 max-w-7xl mx-auto" id="catalog">
 
-                    {/* Category Filter Pills */}
-                    <div className="flex overflow-x-auto gap-3 pb-8 no-scrollbar snap-x">
-                        {categories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setActiveCategory(cat)}
-                                className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest whitespace-nowrap border transition-all snap-start ${activeCategory === cat ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
 
-                    {/* Product Grid / Skeleton */}
                     {loading ? (
                         <div className="space-y-12">
                             {[1, 2].map(s => (
                                 <div key={s}>
-                                    <div className="h-7 w-40 bg-gray-200 animate-pulse rounded mb-5" />
+                                    <div className="h-7 w-40 bg-gray-200 dark:bg-zinc-800 animate-pulse rounded mb-5" />
                                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-5">
                                         {[1, 2, 3, 4].map(i => (
-                                            <div key={i} className="aspect-[3/4] bg-white animate-pulse rounded-2xl border border-gray-100" />
+                                            <div key={i} className="aspect-[3/4] bg-white dark:bg-zinc-900 animate-pulse rounded-2xl border border-gray-100 dark:border-white/5" />
                                         ))}
                                     </div>
                                 </div>
@@ -242,7 +286,7 @@ function App() {
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
                                     <span className="block w-1 h-6 md:h-7 bg-primary rounded-full" />
-                                    <h2 className="text-base md:text-xl font-black text-gray-900 uppercase tracking-tight">
+                                    <h2 className="text-base md:text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
                                         {activeCategory}
                                     </h2>
                                     <span className="text-xs text-gray-400 font-bold">({filteredProducts.length} products)</span>
@@ -296,7 +340,7 @@ function App() {
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-3">
                                                     <span className="block w-1 h-6 md:h-7 bg-primary rounded-full" />
-                                                    <h2 className="text-base md:text-xl font-black text-gray-900 uppercase tracking-tight">
+                                                    <h2 className="text-base md:text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
                                                         {categoryName}
                                                     </h2>
                                                 </div>
@@ -366,12 +410,13 @@ function App() {
 
     return (
         <div className="min-h-screen bg-background selection:bg-primary selection:text-white overflow-x-hidden">
-            <Navbar onCartClick={() => setIsCartOpen(true)} onLoginClick={() => setShowAuth(true)} onSearch={setSearchQuery} />
+            <Navbar onCartClick={() => setIsCartOpen(true)} onLoginClick={() => setShowAuth(true)} onSearch={setSearchQuery} onCategoryClick={setActiveCategory} />
             <SEO />
             {renderContent()}
+            <SeoHiddenLinks />
             <Footer />
             <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-            {showTrackOrder && <TrackOrder onClose={() => window.location.hash = ''} />}
+            {showTrackOrder && <TrackOrder initialOrderId={trackOrderId || undefined} onClose={() => window.location.hash = ''} />}
             {showAuth && !user && <AuthPage onClose={() => setShowAuth(false)} />}
             <FomoPopups />
             <ToastContainer />

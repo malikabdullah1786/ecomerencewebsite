@@ -22,10 +22,15 @@ interface Review {
 }
 
 export const ProductDetails = ({ productId, onBack, onFly }: { productId: number; onBack: () => void; onFly: (e: any) => void }) => {
-    const { products, loading: productsLoading } = useProducts();
+    const { products, loading: productsLoading, refetch } = useProducts();
     const { user } = useAuthStore();
     const addItem = useCartStore((state) => state.addItem);
     const product = products.find(p => String(p.id) === String(productId));
+
+    // Scroll to top when product detail page opens
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [productId]);
 
     // Track viewport for suggestion card width (matches home screen grid)
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -42,6 +47,59 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     const [newComment, setNewComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [loadingReviews, setLoadingReviews] = useState(true);
+    const [quantity, setQuantity] = useState(1);
+
+    // Advanced Daraz-style Hover Zoom state
+    const [isHoveringImage, setIsHoveringImage] = useState(false);
+    const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
+
+    // Variants State
+    const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+    const [activeVariantData, setActiveVariantData] = useState<any>(null);
+
+    // Initialize default variants to the first option of each attribute
+    useEffect(() => {
+        if (product?.dynamic_attributes) {
+            const defaults: Record<string, string> = {};
+            Object.entries(product.dynamic_attributes).forEach(([attr, options]) => {
+                if (Array.isArray(options) && options.length > 0) {
+                    defaults[attr] = options[0];
+                }
+            });
+            setSelectedVariants(defaults);
+        }
+    }, [product]);
+
+    // Sync active variant data (price, stock, image) whenever selectedVariants change
+    useEffect(() => {
+        if (!product || !product.pricing_matrix || Object.keys(selectedVariants).length === 0) {
+            console.log("Variants Debug: Missing core data", { product: !!product, matrix: !!product?.pricing_matrix, selectionCount: Object.keys(selectedVariants).length });
+            setActiveVariantData(null);
+            return;
+        }
+
+        console.log("Variants Debug: Matching combo...", selectedVariants);
+        const match = product.pricing_matrix.find((row: any) => {
+            const combo = row.variant_combo || row.combination;
+            if (!combo) return false;
+            // Case-insensitive check for every key in dynamic_attributes
+            return Object.keys(product.dynamic_attributes || {}).every(key => {
+                const comboVal = Object.entries(combo).find(([k]) => k.toLowerCase() === key.toLowerCase())?.[1];
+                return String(comboVal).toLowerCase() === String(selectedVariants[key] || '').toLowerCase();
+            });
+        });
+
+        if (match) {
+            console.log("Variants Debug: Match found ->", match);
+            setActiveVariantData(match);
+            if (match.image_url) {
+                setActiveImage(match.image_url);
+            }
+        } else {
+            console.log("Variants Debug: No match for combination", selectedVariants);
+            setActiveVariantData(null);
+        }
+    }, [selectedVariants, product?.pricing_matrix, product?.dynamic_attributes]);
 
     const fetchReviews = useCallback(async () => {
         if (!productId) return;
@@ -235,6 +293,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
             if (error) throw error;
             setNewComment('');
             fetchReviews();
+            refetch(); // Update the store to get new combined rating
             toast.show('Review submitted successfully!', 'success');
         } catch (err) {
             toast.show('Error: ' + (err as Error).message, 'error');
@@ -249,7 +308,6 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         if (product) setActiveImage(product.image_url);
     }, [product]);
 
-    const [zoomOrigin, setZoomOrigin] = useState({ x: 0, y: 0 });
     const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
     const handleImageError = (src: string) => {
@@ -301,15 +359,49 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
         setActiveImage(images[prevIndex]);
     };
 
-    const avgRating = reviews.length > 0
-        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
+    const avgRating = product?.avg_rating
+        ? product.avg_rating.toFixed(1)
         : '0.0';
+
+    const totalReviewsCount = product?.total_reviews || 0;
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - left) / width) * 100;
         const y = ((e.clientY - top) / height) * 100;
-        setZoomOrigin({ x, y });
+        setZoomPos({ x, y });
+    };
+
+    const displayPrice = activeVariantData?.price || product.price;
+    const displayStock = activeVariantData?.stock ?? product.stock;
+
+    const handleQuantityChange = (change: number) => {
+        const newQty = quantity + change;
+        if (newQty >= 1 && newQty <= Math.max(displayStock, 1)) {
+            setQuantity(newQty);
+        } else if (newQty > Math.max(displayStock, 1)) {
+            toast.show(`Only ${displayStock} items available.`, 'info');
+        }
+    };
+
+    const handleShare = async () => {
+        const shareUrl = `${window.location.origin}/#product/${product?.id}`;
+        const shareData = {
+            title: product?.name,
+            text: `Check out ${product?.name} on Tarzify!`,
+            url: shareUrl
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                toast.show('Link copied to clipboard!', 'success');
+            }
+        } catch (err) {
+            console.error('Error sharing:', err);
+        }
     };
 
     return (
@@ -329,29 +421,43 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 mb-16 sm:mb-24">
                     {/* Image Section */}
-                    <div className="space-y-4">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
+                    <div className="space-y-4 relative">
+                        {/* Side window Zoom container - hidden by default, shown on hover lg+ */}
+                        {isHoveringImage && !isMobile && (
+                            <div className="hidden lg:block absolute left-full top-0 ml-8 w-full h-[600px] bg-white rounded-3xl overflow-hidden shadow-2xl z-[100] border border-gray-100 pointer-events-none">
+                                {activeImage && (
+                                    <div
+                                        className="w-full h-full object-cover"
+                                        style={{
+                                            backgroundImage: `url(${getImageUrl(activeImage)})`,
+                                            backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+                                            backgroundSize: '250%',
+                                            backgroundRepeat: 'no-repeat'
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        <div
                             onMouseMove={handleMouseMove}
-                            className="aspect-[4/5] glass rounded-[2rem] sm:rounded-[3rem] overflow-hidden relative group shadow-2xl bg-white flex items-center justify-center p-4 border border-foreground/5 cursor-zoom-in"
+                            onMouseEnter={() => setIsHoveringImage(true)}
+                            onMouseLeave={() => setIsHoveringImage(false)}
+                            className="aspect-[4/5] glass rounded-[2rem] sm:rounded-[3rem] overflow-hidden relative group shadow-2xl bg-white flex items-center justify-center p-4 border border-foreground/5 cursor-crosshair"
                         >
                             {activeImage && (
                                 <img
                                     src={getImageUrl(activeImage)}
                                     alt={product.name}
                                     onError={() => handleImageError(activeImage)}
+                                    className="w-full h-full object-contain transition-opacity duration-300"
                                     style={{
-                                        transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                                        // Slight opacity drop on hover so the right slider pops more
+                                        opacity: isHoveringImage && !isMobile ? 0.9 : 1
                                     }}
-                                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[2.5]"
                                 />
                             )}
 
-                            {/* Zoom Instructions */}
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 glass rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                <span className="text-[8px] font-black uppercase tracking-widest whitespace-nowrap">Hover to explore details</span>
-                            </div>
 
                             {/* Navigation Arrows */}
                             {images.length > 1 && (
@@ -374,7 +480,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             <button className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 sm:p-4 glass rounded-full hover:scale-110 transition-transform z-20">
                                 <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
                             </button>
-                        </motion.div>
+                        </div>
 
                         {/* Thumbnails */}
                         {images.length > 1 && (
@@ -406,20 +512,20 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{product.category}</span>
                                 <div className="flex items-center gap-1 text-yellow-500">
                                     <Star className="w-4 h-4 fill-current" />
-                                    <span className="text-xs font-black text-foreground">{avgRating} ({reviews.length} Reviews)</span>
+                                    <span className="text-xs font-black text-foreground">{avgRating} ({totalReviewsCount} Reviews)</span>
                                 </div>
                             </div>
-                            <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter leading-none">{product.name}</h1>
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold tracking-tight leading-tight">{product.name}</h1>
                             <div className="flex flex-col gap-1 sm:gap-2">
                                 <div className="flex items-baseline gap-3">
-                                    <p className="text-3xl sm:text-4xl md:text-6xl font-black text-primary leading-none">Rs. {product.price.toLocaleString()}</p>
-                                    {product.compare_at_price && product.compare_at_price > product.price && (
+                                    <p className="text-3xl sm:text-4xl md:text-5xl font-black text-primary leading-none">Rs. {displayPrice.toLocaleString()}</p>
+                                    {product.compare_at_price && product.compare_at_price > displayPrice && (
                                         <div className="flex items-center gap-2">
                                             <span className="text-lg sm:text-xl text-foreground/30 line-through font-bold">
                                                 Rs. {product.compare_at_price.toLocaleString()}
                                             </span>
                                             <span className="px-2 py-0.5 bg-[#f85606] text-white text-[10px] font-bold rounded-sm">
-                                                -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
+                                                -{Math.round(((product.compare_at_price - displayPrice) / product.compare_at_price) * 100)}%
                                             </span>
                                         </div>
                                     )}
@@ -430,7 +536,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                             <Star key={i} className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${i < Math.round(Number(avgRating)) ? 'fill-current' : 'opacity-20'}`} />
                                         ))}
                                     </div>
-                                    <span className="text-[10px] sm:text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {reviews.length} reviews)</span>
+                                    <span className="text-[10px] sm:text-xs font-black text-foreground/40 mt-0.5">({avgRating} Average / {totalReviewsCount} reviews)</span>
                                 </div>
                             </div>
                         </div>
@@ -439,43 +545,156 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                             {product.description || `Experience the pinnacle of premium design and performance. This ${product.category.toLowerCase()} is meticulously crafted to meet the highest standards of quality and durability.`}
                         </p>
 
+                        {/* Variants UI */}
+                        {product.dynamic_attributes && Object.keys(product.dynamic_attributes).length > 0 && (
+                            <div className="space-y-6 pt-6 border-t border-foreground/5">
+                                {Object.entries(product.dynamic_attributes).map(([attrName, options]) => {
+                                    if (!Array.isArray(options) || options.length === 0) return null;
+                                    const isColorAttr = attrName.toLowerCase().includes('color') || attrName.toLowerCase().includes('colour');
+
+                                    // Helper: find variant image for a specific option
+                                    const getVariantImage = (optionValue: string) => {
+                                        if (!product.pricing_matrix) return null;
+                                        const row = product.pricing_matrix.find((r: any) => {
+                                            const combo = r.variant_combo || r.combination;
+                                            // Case-insensitive match for both key and value
+                                            return Object.entries(combo).some(([k, v]) =>
+                                                k.toLowerCase() === attrName.toLowerCase() &&
+                                                String(v).toLowerCase() === optionValue.toLowerCase()
+                                            );
+                                        });
+                                        return row?.image_url || null;
+                                    };
+
+                                    // Helper: get stock for a specific option
+                                    const getVariantStock = (optionValue: string) => {
+                                        if (!product.pricing_matrix) return null;
+                                        const matchingRows = product.pricing_matrix.filter((r: any) => {
+                                            const combo = r.variant_combo || r.combination;
+                                            if (!combo) return false;
+                                            return Object.entries(combo).some(([k, v]) =>
+                                                k.toLowerCase() === attrName.toLowerCase() &&
+                                                String(v).toLowerCase() === optionValue.toLowerCase()
+                                            );
+                                        });
+                                        if (matchingRows.length === 0) return null;
+                                        return matchingRows.reduce((sum: number, r: any) => sum + (Number(r.stock) || 0), 0);
+                                    };
+
+                                    return (
+                                        <div key={attrName} className="space-y-3">
+                                            <label className="text-xs font-black uppercase tracking-widest opacity-50 flex items-center justify-between">
+                                                {attrName}
+                                                <span className="text-primary font-bold lowercase">{selectedVariants[attrName]}</span>
+                                            </label>
+                                            <div className="flex flex-wrap gap-3">
+                                                {options.map((opt: string) => {
+                                                    const isSelected = selectedVariants[attrName] === opt;
+                                                    const variantImg = isColorAttr ? getVariantImage(opt) : null;
+                                                    const variantStock = getVariantStock(opt);
+                                                    const isOutOfStock = variantStock !== null && variantStock <= 0;
+
+                                                    if (isColorAttr && variantImg) {
+                                                        // Daraz-style image variant selector
+                                                        return (
+                                                            <button
+                                                                key={opt}
+                                                                onClick={() => setSelectedVariants(prev => ({ ...prev, [attrName]: opt }))}
+                                                                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all ${isSelected
+                                                                    ? 'border-primary shadow-lg shadow-primary/20 scale-105'
+                                                                    : 'border-foreground/10 hover:border-primary/50 opacity-80 hover:opacity-100'
+                                                                    } ${isOutOfStock ? 'opacity-40 grayscale' : ''}`}
+                                                                title={opt}
+                                                            >
+                                                                <img src={variantImg} alt={opt} className="w-full h-full object-cover" />
+                                                                {isOutOfStock && (
+                                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                                                        <span className="text-[8px] font-black text-white uppercase">Sold Out</span>
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    }
+
+                                                    // Default text-based variant button
+                                                    return (
+                                                        <button
+                                                            key={opt}
+                                                            onClick={() => !isOutOfStock && setSelectedVariants(prev => ({ ...prev, [attrName]: opt }))}
+                                                            disabled={isOutOfStock}
+                                                            className={`px-6 py-3 rounded-2xl font-bold transition-all border-2 text-sm ${isSelected
+                                                                ? 'border-primary bg-primary text-white shadow-lg shadow-primary/20 scale-105'
+                                                                : isOutOfStock
+                                                                    ? 'border-foreground/5 text-foreground/30 bg-foreground/5 cursor-not-allowed line-through'
+                                                                    : 'border-foreground/10 hover:border-primary/50 text-foreground/70 bg-foreground/5'
+                                                                }`}
+                                                        >
+                                                            {opt}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         <div className="space-y-6">
                             {/* Stock Status Indicator */}
-                            {product.stock > 0 && product.stock <= 10 && (
+                            {displayStock > 0 && displayStock <= 10 && (
                                 <motion.div
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className={`flex items-center gap-2 font-black italic uppercase tracking-tighter text-sm ${product.stock <= 3 ? 'text-red-500' : 'text-amber-500'}`}
+                                    className={`flex items-center gap-2 font-black italic uppercase tracking-tighter text-sm ${displayStock <= 3 ? 'text-red-500' : 'text-amber-500'}`}
                                 >
-                                    <div className={`w-2 h-2 rounded-full animate-pulse ${product.stock <= 3 ? 'bg-red-500' : 'bg-amber-500'}`} />
-                                    Only {product.stock} items left in stock!
+                                    <div className={`w-2 h-2 rounded-full animate-pulse ${displayStock <= 3 ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                    Only {displayStock} items left in stock!
                                 </motion.div>
                             )}
 
                             <div className="flex items-center gap-4">
-                                <div className="flex-grow flex items-center bg-foreground/5 rounded-2xl p-2">
-                                    <span className="px-6 py-2 text-xs font-black uppercase opacity-30">Quantity</span>
-                                    <div className="flex-grow text-center font-black">1</div>
+                                <div className="flex-grow flex items-center bg-foreground/5 rounded-2xl p-1.5 border border-foreground/5">
+                                    <button
+                                        onClick={() => handleQuantityChange(-1)}
+                                        className="w-10 h-10 flex items-center justify-center glass rounded-xl hover:scale-105 active:scale-95 transition-all font-black text-xl"
+                                    >
+                                        -
+                                    </button>
+                                    <div className="flex-grow flex flex-col items-center justify-center">
+                                        <span className="text-[8px] font-black uppercase opacity-20 tracking-widest leading-none mb-0.5">Quantity</span>
+                                        <div className="font-black text-lg leading-none">{quantity}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleQuantityChange(1)}
+                                        className="w-10 h-10 flex items-center justify-center glass rounded-xl hover:scale-105 active:scale-95 transition-all font-black text-xl"
+                                    >
+                                        +
+                                    </button>
                                 </div>
-                                <button className="p-5 glass rounded-2xl hover:scale-105 transition-transform">
-                                    <Share2 className="w-5 h-5" />
+                                <button
+                                    onClick={handleShare}
+                                    className="p-5 glass rounded-2xl hover:scale-105 active:scale-95 transition-all hover:bg-primary/5 group"
+                                >
+                                    <Share2 className="w-5 h-5 group-hover:text-primary transition-colors" />
                                 </button>
                             </div>
 
                             <button
                                 onClick={(e) => {
-                                    if (product.stock === 0) return;
-                                    addItem(product);
+                                    if (displayStock === 0) return;
+                                    // Make sure we pass the correct price to the cart based on variants
+                                    addItem({ ...product, price: displayPrice }, quantity);
                                     onFly(e);
                                 }}
-                                disabled={product.stock === 0}
-                                className={`w-full py-6 transition-all rounded-[2rem] font-black text-xl shadow-2xl flex items-center justify-center gap-3 ${product.stock === 0
+                                disabled={displayStock === 0}
+                                className={`w-full py-6 transition-all rounded-[2rem] font-black text-xl shadow-2xl flex items-center justify-center gap-3 ${displayStock === 0
                                     ? 'bg-foreground/20 text-foreground/40 cursor-not-allowed'
                                     : 'bg-primary text-white shadow-primary/30 hover:scale-[1.02] active:scale-[0.98]'
                                     }`}
                             >
                                 <ShoppingBag className="w-6 h-6" />
-                                {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                                {displayStock === 0 ? 'Out of Stock' : 'Add to Cart'}
                             </button>
                         </div>
 

@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /
 
+# Specifically Allow Googlebot
+User-agent: Googlebot
+Allow: /
+
 # Allow Googlebot-Image to index all branding and metadata assets
 User-agent: Googlebot-Image
 Allow: /logo.png
@@ -8,5 +12,19 @@ Allow: /favicon-*.png
 Allow: /og-image-*.png
 Allow: /apple-icon-*.png
 Allow: /assets/
+
+# Explicitly Allow AI Crawlers & Chatbots
+User-agent: GPTBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Anthropic-ai
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
 
 Sitemap: https://www.tarzify.com/sitemap.xml

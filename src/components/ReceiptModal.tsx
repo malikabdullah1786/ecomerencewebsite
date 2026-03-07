@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Printer, CheckCircle, MapPin, Mail, Phone } from 'lucide-react';
+import { X, Printer, CheckCircle, MapPin, Mail, Phone, Truck } from 'lucide-react';
 
 export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => void }) => {
     const trackUrl = `${window.location.origin}/#track-order?id=${order.order_number}`;
@@ -13,20 +14,12 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
         return () => { document.body.style.overflow = prev; };
     }, []);
 
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-xl"
-            data-lenis-prevent="true"
-            style={{
-                height: '100dvh',
-                overflowY: 'auto',
-                overscrollBehavior: 'contain',
-                WebkitOverflowScrolling: 'touch' as any,
-            }}
-            onWheel={e => e.stopPropagation()}
-            onTouchMove={e => e.stopPropagation()}
+            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-xl overflow-y-auto overscroll-contain receipt-modal-portal"
+            data-lenis-prevent
         >
-            <div className="flex flex-col items-center p-4 min-h-full">
+            <div className="min-h-screen w-full flex flex-col items-center p-4 md:p-12">
                 {/* ❌ Close button — sticky, large, RED, always visible */}
                 <button
                     onClick={onClose}
@@ -39,13 +32,11 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className="bg-white text-black w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] mb-8"
+                    className="bg-white text-black w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] mb-8 print:shadow-none print:m-0 print:rounded-none"
+                    id="receipt-print-area"
                 >
                     {/* Header / Branding */}
                     <div className="bg-black p-10 text-white relative">
-                        <button onClick={onClose} className="absolute top-6 right-6 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
-                            <X className="w-6 h-6" />
-                        </button>
                         <div className="flex justify-between items-start">
                             <div className="space-y-2">
                                 <h2 className="text-5xl font-black italic tracking-tighter uppercase leading-none">TARZIFY</h2>
@@ -75,6 +66,38 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                                     <span className="font-extrabold text-sm uppercase tracking-widest">Order {order.status}</span>
                                 </div>
                                 <h3 className="text-2xl font-black tracking-tighter">Your order is confirmed.</h3>
+                                {order.tracking_number && (
+                                    <div className="mt-2 space-y-1">
+                                        <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Tracking Information</p>
+                                        <div className="flex items-center gap-2">
+                                            <Truck className="w-4 h-4 text-primary" />
+                                            {(() => {
+                                                const getTrackingUrl = (courier: string, num: string) => {
+                                                    const c = courier?.toLowerCase() || '';
+                                                    if (c.includes('tcs')) return `https://www.tcsexpress.com/track/${num}`;
+                                                    if (c.includes('leopard')) return `https://www.leopardscourier.com/leopards-tracking?tracking_number=${num}`;
+                                                    if (c.includes('m&p') || c.includes('m and p')) return `https://www.mulphilog.com/tracking-result?tracking_no=${num}`;
+                                                    if (c.includes('trax')) return `https://trax.pk/tracking?tracking_number=${num}`;
+                                                    if (c.includes('call')) return `https://callcourier.com.pk/tracking/?cn=${num}`;
+                                                    return null;
+                                                };
+                                                const url = getTrackingUrl(order.courier_name, order.tracking_number);
+                                                return url ? (
+                                                    <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm font-black text-primary hover:underline"
+                                                    >
+                                                        {order.courier_name || 'Courier'}: {order.tracking_number}
+                                                    </a>
+                                                ) : (
+                                                    <p className="text-sm font-black">{order.tracking_number}</p>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
                                 <p className="text-sm opacity-50 leading-relaxed max-w-sm">Thank you for choosing TARZIFY. Your premium selection is being processed and will be with you shortly.</p>
                             </div>
                         </div>
@@ -170,6 +193,7 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                     </div>
                 </motion.div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

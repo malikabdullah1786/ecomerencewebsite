@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Users, Bell, Settings, ArrowUpRight, Search, Plus, Save, Loader2, Menu, X, Trash2, Eye, Upload, Edit2 } from 'lucide-react';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -13,13 +13,17 @@ export const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const { products, loading: productsLoading, refetch } = useProducts();
     const { stats, loading: statsLoading, refetch: refetchStats } = useAdminStats();
-    const { categories, addCategory, deleteCategory, loading: categoriesLoading } = useCategories();
+    const { categories, addCategory, updateCategory, deleteCategory, loading: categoriesLoading } = useCategories();
 
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [localStock, setLocalStock] = useState<Record<number, number>>({});
-    const [showAddProduct, setShowAddProduct] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [editingProductId, setEditingProductId] = useState<number | null>(null);
     const [newCategoryName, setNewCategoryName] = useState('');
+    const [newCategoryImage, setNewCategoryImage] = useState('');
+    const [uploadingCategory, setUploadingCategory] = useState(false);
+    const [renamingId, setRenamingId] = useState<number | null>(null);
+    const [tempName, setTempName] = useState('');
 
     // Data States
     const [orders, setOrders] = useState([] as any[]);
@@ -33,6 +37,50 @@ export const AdminDashboard = () => {
         products.forEach(p => initialStock[p.id] = p.stock);
         setLocalStock(initialStock);
     }, [products]);
+
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = "https://upload-widget.cloudinary.com/global/all.js";
+        script.async = true;
+        document.body.appendChild(script);
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
+
+    const openUploadWidget = (callback: (url: string) => void) => {
+        if (!(window as any).cloudinary) {
+            useToastStore.getState().show('Upload widget not loaded', 'error');
+            return;
+        }
+
+        (window as any).cloudinary.openUploadWidget(
+            {
+                cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+                uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+                multiple: false,
+                maxFiles: 1,
+                clientAllowedFormats: ["jpg", "png", "webp", "jpeg"],
+            },
+            (error: any, result: any) => {
+                if (!error && result && result.event === "success") {
+                    callback(result.info.secure_url);
+                }
+            }
+        );
+    };
+
+    const handleUploadClick = (categoryToEdit?: any) => {
+        setUploadingCategory(true);
+        openUploadWidget((url) => {
+            if (categoryToEdit) {
+                handleUpdateCategoryImage(categoryToEdit.id, url);
+            } else {
+                setNewCategoryImage(url);
+            }
+            setUploadingCategory(false);
+        });
+    };
 
     // Fetch Orders/Customers/Carts on tab change
     useEffect(() => {
@@ -63,14 +111,20 @@ export const AdminDashboard = () => {
                     // Group by user
                     const grouped = data.reduce((acc: any, item: any) => {
                         const userId = item.user_id;
+                        const itemTimestamp = item.updated_at || item.created_at;
+
                         if (!acc[userId]) {
                             acc[userId] = {
                                 user: item.user,
                                 items: [],
                                 total: 0,
-                                last_updated: item.updated_at
+                                last_updated: itemTimestamp
                             };
+                        } else if (new Date(itemTimestamp) > new Date(acc[userId].last_updated)) {
+                            // Keep the latest timestamp
+                            acc[userId].last_updated = itemTimestamp;
                         }
+
                         acc[userId].items.push(item);
                         acc[userId].total += item.products.price * item.quantity;
                         return acc;
@@ -100,6 +154,23 @@ export const AdminDashboard = () => {
             useToastStore.getState().show('Update failed: ' + (err.message || 'Unknown error'), 'error');
         } finally {
             setUpdatingId(null);
+        }
+    };
+
+    const handleDeleteProduct = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        try {
+            const { error } = await supabase
+                .from('products')
+                .update({ deleted_at: new Date().toISOString() })
+                .eq('id', id);
+
+            if (error) throw error;
+            useToastStore.getState().show('Product deleted successfully', 'success');
+            await refetch();
+            await refetchStats();
+        } catch (err: any) {
+            useToastStore.getState().show('Failed to delete product: ' + err.message, 'error');
         }
     };
 
@@ -140,8 +211,19 @@ export const AdminDashboard = () => {
     const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCategoryName.trim()) return;
-        await addCategory(newCategoryName.trim());
+        await addCategory(newCategoryName.trim(), newCategoryImage);
         setNewCategoryName('');
+        setNewCategoryImage('');
+    };
+
+    const handleUpdateCategoryImage = async (id: number, url: string) => {
+        await updateCategory(id, { image_url: url });
+    };
+
+    const handleRenameCategory = async (id: number) => {
+        if (!tempName.trim()) return;
+        await updateCategory(id, { name: tempName.trim() });
+        setRenamingId(null);
     };
 
     const handleDeleteCategory = async (id: number, name: string) => {
@@ -232,7 +314,7 @@ export const AdminDashboard = () => {
                                     <ArrowUpRight className="w-4 h-4" />
                                     <span className="uppercase tracking-tighter italic">Seed Data</span>
                                 </button>
-                                <button onClick={() => setShowAddProduct(true)} className="w-full sm:w-auto bg-primary text-white font-black px-8 py-4 rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20">
+                                <button onClick={() => setEditingProductId(-1)} className="w-full sm:w-auto bg-primary text-white font-black px-8 py-4 rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20">
                                     <Plus className="w-5 h-5" />
                                     <span className="uppercase tracking-tighter italic">Add Product</span>
                                 </button>
@@ -283,10 +365,17 @@ export const AdminDashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => handleUpdateStock(product.id)} disabled={updatingId === product.id} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors inline-flex items-center gap-2">
-                                                        {updatingId === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                                        <span className="text-xs">Save</span>
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button onClick={() => handleUpdateStock(product.id)} disabled={updatingId === product.id} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors inline-flex items-center gap-2" title="Save Stock">
+                                                            {updatingId === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                                        </button>
+                                                        <button onClick={() => setEditingProductId(product.id)} className="p-2 text-foreground hover:bg-foreground/10 rounded-lg transition-colors inline-flex items-center gap-2" title="Edit details">
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors inline-flex items-center gap-2" title="Delete product">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
@@ -304,16 +393,41 @@ export const AdminDashboard = () => {
                                 <h3 className="text-2xl font-black italic uppercase tracking-tighter">Manage Categories</h3>
                                 <p className="text-sm opacity-50">Add or remove product categories.</p>
                             </div>
-                            <form onSubmit={handleAddCategory} className="flex gap-4 w-full sm:w-auto">
-                                <input
-                                    type="text"
-                                    placeholder="Category Name"
-                                    value={newCategoryName}
-                                    onChange={e => setNewCategoryName(e.target.value)}
-                                    className="bg-foreground/5 border-none rounded-2xl px-6 py-4 outline-none focus:ring-2 ring-primary/30 w-full sm:w-64 font-bold"
-                                />
-                                <button type="submit" disabled={categoriesLoading || !newCategoryName.trim()} className="bg-primary text-white p-4 rounded-2xl hover:scale-105 transition-transform disabled:opacity-30 self-stretch flex items-center justify-center">
+                            <form onSubmit={handleAddCategory} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-end sm:items-center">
+                                <div className="flex gap-4 w-full sm:w-auto">
+                                    <div className="relative group">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUploadClick()}
+                                            className="w-16 h-16 rounded-2xl border-2 border-dashed border-white/10 hover:border-primary/50 flex items-center justify-center overflow-hidden transition-all bg-foreground/5 sticky"
+                                        >
+                                            {newCategoryImage ? (
+                                                <img src={newCategoryImage} alt="New" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Upload className="w-6 h-6 opacity-30 group-hover:opacity-100" />
+                                            )}
+                                        </button>
+                                        {newCategoryImage && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewCategoryImage('')}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Category Name"
+                                        value={newCategoryName}
+                                        onChange={e => setNewCategoryName(e.target.value)}
+                                        className="bg-foreground/5 border-none rounded-2xl px-6 py-4 outline-none focus:ring-2 ring-primary/30 w-full sm:w-64 font-bold h-16"
+                                    />
+                                </div>
+                                <button type="submit" disabled={categoriesLoading || uploadingCategory || !newCategoryName.trim()} className="h-16 bg-primary text-white px-8 rounded-2xl hover:scale-105 transition-transform disabled:opacity-30 flex items-center justify-center gap-2 group shadow-xl shadow-primary/20">
                                     {categoriesLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-6 h-6" />}
+                                    <span className="uppercase font-black text-sm italic tracking-tighter">Add Category</span>
                                 </button>
                             </form>
                         </div>
@@ -324,11 +438,57 @@ export const AdminDashboard = () => {
                             ) : categories.length === 0 ? (
                                 <div className="col-span-full p-20 glass rounded-[3rem] text-center opacity-30 italic font-bold">No categories found. Start by adding one above.</div>
                             ) : categories.map(category => (
-                                <div key={category.id} className="glass p-6 rounded-[2rem] border-white/5 group hover:border-primary/30 transition-all flex items-center justify-between">
-                                    <div className="font-bold text-lg">{category.name}</div>
-                                    <button onClick={() => handleDeleteCategory(category.id, category.name)} className="p-3 text-red-500 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                <div key={category.id} className="glass p-4 rounded-[2rem] border-white/5 group hover:border-primary/30 transition-all flex items-center gap-4 relative overflow-hidden">
+                                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-foreground/5 relative flex-shrink-0 group">
+                                        {category.image_url ? (
+                                            <img src={category.image_url} alt={category.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center italic opacity-20 text-[8px] gap-1">
+                                                <Upload className="w-4 h-4" />
+                                                <span>Add Photo</span>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => handleUploadClick(category)}
+                                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                                        >
+                                            <Upload className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="flex-grow">
+                                        {renamingId === category.id ? (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={tempName}
+                                                    onChange={e => setTempName(e.target.value)}
+                                                    className="bg-foreground/5 border-none rounded-lg px-2 py-1 outline-none focus:ring-1 ring-primary/30 font-bold text-sm w-full"
+                                                    autoFocus
+                                                    onKeyDown={e => e.key === 'Enter' && handleRenameCategory(category.id)}
+                                                />
+                                                <button onClick={() => handleRenameCategory(category.id)} className="p-1 px-2 bg-primary text-white text-[10px] rounded-lg">Save</button>
+                                                <button onClick={() => setRenamingId(null)} className="p-1 px-2 bg-foreground/10 text-foreground text-[10px] rounded-lg">X</button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="font-black text-sm uppercase italic tracking-tighter truncate flex items-center gap-2">
+                                                    {category.name}
+                                                </div>
+                                                <p className="text-[10px] opacity-30 font-bold uppercase tracking-widest">Active Category</p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => { setRenamingId(category.id); setTempName(category.name); }}
+                                            className="p-2 text-primary hover:bg-primary/10 rounded-xl transition-all scale-90 hover:scale-100"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={() => handleDeleteCategory(category.id, category.name)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all scale-90 hover:scale-100">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -452,22 +612,29 @@ export const AdminDashboard = () => {
             </div>
 
             <AnimatePresence>
-                {/* Add Product Page (Admin Version) */}
-                {showAddProduct && (
+                {/* Form Overlay (Admin Version) */}
+                {editingProductId !== null && (
                     <motion.div
                         initial={{ opacity: 0, x: 100 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 100 }}
-                        className="fixed inset-0 z-[150] bg-white overflow-y-auto"
+                        className="fixed inset-0 z-[150] bg-background border-l border-white/5 overflow-y-auto"
                     >
-                        <ProductForm
-                            onClose={() => setShowAddProduct(false)}
-                            onSuccess={() => {
-                                refetch();
-                                refetchStats();
-                                setShowAddProduct(false);
-                            }}
-                        />
+                        {/* 
+                          We pass `productId` to let the form know we are editing. 
+                          If `editingProductId === -1`, we pass undefined so it acts as "Create".
+                        */}
+                        <div className="max-w-4xl mx-auto py-12 px-6">
+                            <ProductForm
+                                productId={editingProductId === -1 ? undefined : editingProductId}
+                                onClose={() => setEditingProductId(null)}
+                                onSuccess={() => {
+                                    refetch();
+                                    refetchStats();
+                                    setEditingProductId(null);
+                                }}
+                            />
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

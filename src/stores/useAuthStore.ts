@@ -79,6 +79,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
             const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
                 console.log('🔄 Auth state changed:', event, session?.user?.email);
+
+                if (event === 'PASSWORD_RECOVERY') {
+                    console.log('🔑 Password recovery mode detected');
+                    window.location.hash = '#reset-password';
+                }
+
                 if (session?.user) {
                     const role = await fetchRole(session.user.id);
                     set({ user: session.user, role, loading: false });

@@ -5,21 +5,32 @@ import { ThemeToggle } from './ThemeToggle';
 import { useCartStore } from '../stores/useCartStore';
 import { useCartSync } from '../hooks/useCartSync';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useCategories } from '../hooks/useCategories';
+import { useProducts } from '../hooks/useProducts';
 
 export const Navbar = ({
     onCartClick,
     onLoginClick,
-    onSearch
+    onSearch,
+    onCategoryClick
 }: {
     onCartClick: () => void,
     onLoginClick: () => void,
-    onSearch: (query: string) => void
+    onSearch: (q: string) => void,
+    onCategoryClick?: (name: string) => void
 }) => {
+    const { categories } = useCategories();
+    const { products } = useProducts();
     useCartSync(); // Initialize cart synchronization
     const cartItemsCount = useCartStore((state) => state.items.length);
     const { user, role, signOut } = useAuthStore();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
+
+    // Only show categories that have products
+    const activeCategoryNames = new Set(products.map(p => p.category));
+    const filteredCategories = categories.filter(c => activeCategoryNames.has(c.name));
 
     const handleSignOut = async () => {
         await signOut();
@@ -32,12 +43,12 @@ export const Navbar = ({
         <motion.header
             initial={{ y: -100 }}
             animate={{ y: 0 }}
-            className="fixed top-0 left-0 w-full z-50 px-2 sm:px-6 py-2 sm:py-4 bg-transparent"
+            className="fixed top-0 left-0 w-full z-50 px-2 sm:px-6 py-2 sm:py-4 bg-transparent no-print"
         >
             <nav className="max-w-7xl mx-auto glass rounded-full px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between shadow-2xl border-white/10">
                 <div className="flex items-center gap-8">
                     <div
-                        onClick={() => window.location.reload()}
+                        onClick={() => { window.location.hash = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                         className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
                     >
                         <img
@@ -53,7 +64,7 @@ export const Navbar = ({
                         {['Home', 'Shop', 'Categories'].map((item) => (
                             <a
                                 key={item}
-                                href={item === 'Home' ? '#' : item === 'Categories' ? '#categories' : '#'}
+                                href={item === 'Home' ? '#' : item === 'Shop' ? '#catalog' : '#catalog'}
                                 className="text-sm font-medium hover:text-primary transition-colors relative group"
                             >
                                 {item}
@@ -208,79 +219,119 @@ export const Navbar = ({
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 h-screen w-80 bg-background border-l border-white/10 z-[70] md:hidden p-8 flex flex-col gap-8 shadow-2xl"
+                            className="fixed top-0 right-0 h-screen w-72 bg-background border-l border-white/10 z-[70] md:hidden p-5 flex flex-col gap-5 shadow-2xl"
                         >
                             <div className="flex justify-between items-center">
-                                <span className="text-2xl font-black italic tracking-tighter">MENU</span>
-                                <button onClick={() => setIsMenuOpen(false)} className="p-2 glass rounded-full"><X className="w-6 h-6" /></button>
+                                <span className="text-xl font-black italic tracking-tighter">MENU</span>
+                                <button onClick={() => setIsMenuOpen(false)} className="p-1.5 glass rounded-full"><X className="w-5 h-5" /></button>
                             </div>
 
-                            <div className="flex-1 flex flex-col gap-8 overflow-y-auto pr-2 no-scrollbar">
-                                <div className="space-y-4">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Navigation</p>
-                                    <div className="flex flex-col gap-3">
+                            <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2 no-scrollbar">
+                                {/* Search at top for Mobile */}
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-30">Search</p>
+                                    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-foreground/5 rounded-xl focus-within:ring-2 ring-primary/30 transition-all shadow-inner border border-white/5">
+                                        <Search className="w-4 h-4 opacity-40 text-primary" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search items..."
+                                            onChange={(e) => onSearch(e.target.value)}
+                                            className="bg-transparent border-none focus:outline-none text-xs flex-grow font-bold placeholder:opacity-30"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-30">Navigation</p>
+                                    <div className="flex flex-col gap-1.5">
                                         {['Home', 'Shop'].map((item) => (
                                             <a
                                                 key={item}
-                                                href={item === 'Home' ? '#' : '#'}
+                                                href={item === 'Home' ? '#' : '#catalog'}
                                                 onClick={() => setIsMenuOpen(false)}
-                                                className="text-3xl font-black uppercase tracking-tighter italic hover:text-primary transition-colors flex items-center justify-between group"
+                                                className="h-11 px-5 bg-foreground/5 rounded-xl flex items-center justify-between group hover:bg-primary/5 transition-all outline-none"
                                             >
-                                                {item}
-                                                <ChevronRight className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0" />
+                                                <span className="text-base font-black uppercase tracking-tighter italic group-hover:text-primary transition-colors">{item}</span>
+                                                <ChevronRight className="w-4 h-4 opacity-20 group-hover:opacity-100 group-hover:text-primary transition-all" />
                                             </a>
                                         ))}
-                                    </div>
-                                </div>
 
-                                <div className="space-y-4">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Categories</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {['Men', 'Women', 'Kids', 'Sport', 'Tech'].map((cat) => (
+                                        {/* Categories Collapsible */}
+                                        <div className="space-y-1.5">
                                             <button
-                                                key={cat}
-                                                onClick={() => { setIsMenuOpen(false); window.location.hash = '#categories'; }}
-                                                className="px-4 py-2 bg-foreground/5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all border border-transparent hover:border-primary/20"
+                                                onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
+                                                className={`w-full h-11 px-5 rounded-xl flex items-center justify-between transition-all outline-none ${isCategoriesOpen ? 'bg-primary/10 text-primary' : 'bg-foreground/5 hover:bg-primary/5'}`}
                                             >
-                                                {cat}
+                                                <span className="text-base font-black uppercase tracking-tighter italic">Categories</span>
+                                                <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isCategoriesOpen ? 'rotate-90 text-primary' : 'opacity-20'}`} />
                                             </button>
-                                        ))}
+
+                                            <AnimatePresence>
+                                                {isCategoriesOpen && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="overflow-hidden bg-foreground/[0.02] rounded-2xl border border-white/5"
+                                                    >
+                                                        <div className="p-1 grid grid-cols-1 gap-1 max-h-40 overflow-y-auto no-scrollbar">
+                                                            {filteredCategories.length > 0 ? filteredCategories.map((cat) => (
+                                                                <button
+                                                                    key={cat.id}
+                                                                    onClick={() => {
+                                                                        setIsMenuOpen(false);
+                                                                        if (onCategoryClick) onCategoryClick(cat.name);
+                                                                        else window.location.hash = '#catalog';
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2.5 rounded-lg hover:bg-primary/5 text-xs font-bold uppercase tracking-widest opacity-70 hover:opacity-100 hover:text-primary transition-all flex items-center justify-between group"
+                                                                >
+                                                                    {cat.name}
+                                                                    <div className="w-1 h-1 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
+                                                                </button>
+                                                            )) : (
+                                                                <p className="p-4 text-xs opacity-40 italic">No categories found...</p>
+                                                            )}
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Account & Support</p>
-                                    <div className="grid grid-cols-1 gap-2.5">
-                                        <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#track-order'; }} className="flex items-center gap-3 h-14 px-6 bg-foreground/5 rounded-2xl hover:bg-primary/5 transition-all text-xs font-black uppercase tracking-widest">
-                                            <Package className="w-5 h-5 opacity-50" />
+                                <div className="space-y-3">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-30">Account & Support</p>
+                                    <div className="grid grid-cols-1 gap-1.5">
+                                        <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#track-order'; }} className="flex items-center gap-3 h-11 px-5 bg-foreground/5 rounded-xl hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest">
+                                            <Package className="w-4 h-4 opacity-50" />
                                             Track Order
                                         </button>
 
                                         {user ? (
                                             <>
                                                 {(role === 'merchant' || role === 'admin') && (
-                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#merchant'; }} className="flex items-center gap-3 h-14 px-6 bg-primary/10 text-primary rounded-2xl hover:scale-[1.02] transition-all text-xs font-black uppercase tracking-widest">
-                                                        <LayoutDashboard className="w-5 h-5" />
+                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#merchant'; }} className="flex items-center gap-3 h-11 px-5 bg-primary/10 text-primary rounded-xl hover:scale-[1.01] transition-all text-[10px] font-black uppercase tracking-widest">
+                                                        <LayoutDashboard className="w-4 h-4" />
                                                         Merchant Panel
                                                     </button>
                                                 )}
                                                 {role === 'admin' && (
-                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 h-14 px-6 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs font-black uppercase tracking-widest">
-                                                        <Shield className="w-5 h-5" />
+                                                    <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#admin'; }} className="flex items-center gap-3 h-11 px-5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] transition-all text-[10px] font-black uppercase tracking-widest">
+                                                        <Shield className="w-4 h-4" />
                                                         Admin Panel
                                                     </button>
                                                 )}
-                                                <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#profile'; }} className="flex items-center gap-3 h-14 px-6 bg-foreground/5 rounded-2xl hover:bg-primary/5 transition-all text-xs font-black uppercase tracking-widest">
-                                                    <UserIcon className="w-5 h-5 opacity-50" />
+                                                <button onClick={() => { setIsMenuOpen(false); window.location.hash = '#profile'; }} className="flex items-center gap-3 h-11 px-5 bg-foreground/5 rounded-xl hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest">
+                                                    <UserIcon className="w-4 h-4 opacity-50" />
                                                     My Profile
                                                 </button>
-                                                <button onClick={handleSignOut} className="flex items-center gap-3 h-14 px-6 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500/20 transition-all text-xs font-black uppercase tracking-widest">
-                                                    <LogOut className="w-5 h-5 opacity-50" />
+                                                <button onClick={handleSignOut} className="flex items-center gap-3 h-11 px-5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest text-left">
+                                                    <LogOut className="w-4 h-4 opacity-50" />
                                                     Log Out
                                                 </button>
                                             </>
                                         ) : (
-                                            <button onClick={() => { setIsMenuOpen(false); onLoginClick(); }} className="flex items-center gap-3 h-16 px-8 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs font-black uppercase tracking-widest justify-center">
+                                            <button onClick={() => { setIsMenuOpen(false); onLoginClick(); }} className="flex items-center gap-3 h-12 px-6 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] transition-all text-[10px] font-black uppercase tracking-widest justify-center">
                                                 Sign In / Register
                                             </button>
                                         )}
@@ -289,15 +340,6 @@ export const Navbar = ({
                             </div>
 
                             <div className="mt-auto pt-6 border-t border-white/5 space-y-6">
-                                <div className="flex items-center gap-3 px-5 py-3 bg-foreground/5 rounded-full focus-within:ring-2 ring-primary/30 transition-all shadow-inner">
-                                    <Search className="w-4 h-4 opacity-50" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search TARZIFY..."
-                                        onChange={(e) => onSearch(e.target.value)}
-                                        className="bg-transparent border-none focus:outline-none text-xs flex-grow font-medium"
-                                    />
-                                </div>
                                 <div className="flex justify-center gap-6 opacity-30">
                                     <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">Instagram</button>
                                     <button className="text-[10px] font-black uppercase tracking-widest hover:text-primary transition-colors">TikTok</button>

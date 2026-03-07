@@ -18,6 +18,7 @@ export interface Product {
     description?: string;
     image_urls?: string[];
     avg_rating?: number;
+    total_reviews?: number;
     compare_at_price?: number;
     // SEO fields
     seo_title?: string;
@@ -25,6 +26,9 @@ export interface Product {
     slug?: string;
     alt_text?: string;
     tags?: string[];
+    // Dynamic Variants
+    dynamic_attributes?: Record<string, string[]>;
+    pricing_matrix?: any[];
 }
 
 interface ProductState {
@@ -108,10 +112,19 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
             const enriched = (data || []).map((p: any) => {
                 const revs: { rating: number }[] = p.reviews || [];
-                const avg_rating = revs.length > 0
-                    ? revs.reduce((sum, r) => sum + r.rating, 0) / revs.length
-                    : 0;
-                return { ...p, avg_rating };
+                const manualTotal = Number(p.total_reviews) || 0;
+                const manualAvg = Number(p.avg_rating) || 0;
+
+                // Logic: Treat manual as "base" and real reviews as additional
+                const combinedTotal = manualTotal + revs.length;
+                let combinedAvg = manualAvg;
+
+                if (revs.length > 0) {
+                    const sumReal = revs.reduce((sum, r) => sum + r.rating, 0);
+                    combinedAvg = (manualAvg * manualTotal + sumReal) / combinedTotal;
+                }
+
+                return { ...p, avg_rating: combinedAvg, total_reviews: combinedTotal };
             });
 
             set({

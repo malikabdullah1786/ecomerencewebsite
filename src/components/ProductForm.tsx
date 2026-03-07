@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Loader2, Save, Upload, Trash2 } from 'lucide-react';
+import { X, Loader2, Save, Upload, Trash2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -8,11 +8,12 @@ import { useToastStore } from '../stores/useToastStore';
 import { useCategories } from '../hooks/useCategories';
 
 interface ProductFormProps {
-    onClose: () => void;
-    onSuccess: () => void;
+    productId?: number;
+    onClose?: () => void;
+    onSuccess?: () => void;
 }
 
-export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
+export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps) => {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const { user } = useAuthStore();
@@ -25,10 +26,22 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
         compare_at_price: '',
         category: '',
         stock: '',
-        is_returnable: true
+        is_returnable: true,
+        description: '', // Adding description which was missing from Admin form
+        // New SEO and Universal Product fields
+        seo_title: '',
+        meta_description: '',
+        slug: '',
+        alt_text: '',
+        tags: '',
+        dynamic_attributes: {} as Record<string, string[]>,
+        pricing_matrix: [] as any[],
+        avg_rating: '0.0',
+        total_reviews: '0'
     });
 
     const widgetRef = useRef<any>(null);
+    const toast = useToastStore(); // Added toast instance
 
     useEffect(() => {
         const initWidget = () => {
@@ -90,9 +103,81 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
         };
     }, []);
 
+    // Auto-populate SEO based on Name, Category and SKU for uniqueness
+    useEffect(() => {
+        if (!formData.name && !formData.category) return;
+
+        const baseSlug = slugify(formData.name);
+        const uniqueSlug = formData.sku ? `${baseSlug}-${formData.sku.toLowerCase()}` : baseSlug;
+
+        const autoTags = [
+            formData.category,
+            formData.name.split(' ')[0], // First word (often Brand/Type)
+            'buy online',
+            'pakistan'
+        ].filter(Boolean).map(t => t.toLowerCase()).join(', ');
+
+        const autoSeoTitle = formData.name ? `${formData.name} - Buy Online | Store` : '';
+        const autoAltText = formData.name ? `Product image of ${formData.name}` : '';
+        const autoMetaDesc = `Buy ${formData.name || 'this product'} online at the best price. Authentic ${formData.category || 'items'} with fast delivery.`;
+
+        setFormData(prev => ({
+            ...prev,
+            slug: prev.slug || uniqueSlug,
+            tags: prev.tags || autoTags,
+            seo_title: prev.seo_title || autoSeoTitle,
+            meta_description: prev.meta_description || autoMetaDesc,
+            alt_text: prev.alt_text || autoAltText
+        }));
+    }, [formData.name, formData.category, formData.sku]);
+
+    // Load existing product data when editing
+    useEffect(() => {
+        if (!productId) return;
+        const loadProduct = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('id', productId)
+                    .single();
+                if (error || !data) {
+                    toast.show('Failed to load product data', 'error');
+                    setLoading(false);
+                    return;
+                }
+                setFormData({
+                    name: data.name || '',
+                    sku: data.sku || '',
+                    price: String(data.price ?? ''),
+                    compare_at_price: data.compare_at_price ? String(data.compare_at_price) : '',
+                    category: data.category || '',
+                    stock: String(data.stock ?? ''),
+                    is_returnable: data.is_returnable ?? true,
+                    description: data.description || '',
+                    seo_title: data.seo_title || '',
+                    meta_description: data.meta_description || '',
+                    slug: data.slug || '',
+                    alt_text: data.alt_text || '',
+                    tags: Array.isArray(data.tags) ? data.tags.join(', ') : (data.tags || ''),
+                    dynamic_attributes: data.dynamic_attributes || {},
+                    pricing_matrix: data.pricing_matrix || [],
+                    avg_rating: String(data.avg_rating ?? '0.0'),
+                    total_reviews: String(data.total_reviews ?? '0'),
+                });
+                setImageUrls(data.image_urls || (data.image_url ? [data.image_url] : []));
+            } catch (err: any) {
+                toast.show('Error loading product: ' + err.message, 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadProduct();
+    }, [productId]);
+
     const handleUpload = () => {
         if (widgetRef.current) {
-            setUploading(true);
             widgetRef.current.open();
         } else {
             useToastStore.getState().show('Upload widget still loading...', 'error');
@@ -101,6 +186,111 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
 
     const removeImage = (index: number) => {
         setImageUrls(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Helper to generate the cartesian product of all attributes to form the matrix
+    const generatePricingMatrix = (attributes: Record<string, string[]>) => {
+        const keys = Object.keys(attributes).filter(k => attributes[k].length > 0);
+        if (keys.length === 0) return [];
+
+        const combinations = keys.reduce((acc, key) => {
+            const values = attributes[key];
+            if (acc.length === 0) {
+                return values.map(v => ({ [key]: v }));
+            }
+            const newAcc: any[] = [];
+            acc.forEach(existing => {
+                values.forEach(v => {
+                    newAcc.push({ ...existing, [key]: v });
+                });
+            });
+            return newAcc;
+        }, [] as any[]);
+
+        return combinations.map(combo => {
+            // Try to preserve existing price/stock/image if this combo already existed
+            const existingRow = formData.pricing_matrix.find(row => {
+                return keys.every(k => row.variant_combo?.[k] === combo[k]);
+            });
+
+            return {
+                variant_combo: combo,
+                price: existingRow?.price || formData.price || '0',
+                stock: existingRow?.stock || formData.stock || '0',
+                image_url: existingRow?.image_url || null
+            };
+        });
+    };
+
+    const handleAddAttribute = (attrName: string) => {
+        if (!attrName || formData.dynamic_attributes[attrName]) return;
+        setFormData(prev => ({
+            ...prev,
+            dynamic_attributes: { ...prev.dynamic_attributes, [attrName]: [] }
+        }));
+    };
+
+    const handleRemoveAttribute = (attrName: string) => {
+        const newAttrs = { ...formData.dynamic_attributes };
+        delete newAttrs[attrName];
+        setFormData(prev => ({
+            ...prev,
+            dynamic_attributes: newAttrs,
+            pricing_matrix: generatePricingMatrix(newAttrs)
+        }));
+    };
+
+    const handleAddOption = (attrName: string, optionValue: string) => {
+        if (!optionValue || formData.dynamic_attributes[attrName].includes(optionValue)) return;
+        const newAttrs = {
+            ...formData.dynamic_attributes,
+            [attrName]: [...formData.dynamic_attributes[attrName], optionValue]
+        };
+        setFormData(prev => ({
+            ...prev,
+            dynamic_attributes: newAttrs,
+            pricing_matrix: generatePricingMatrix(newAttrs)
+        }));
+    };
+
+    const handleRemoveOption = (attrName: string, optionIndex: number) => {
+        const newAttrs = {
+            ...formData.dynamic_attributes,
+            [attrName]: formData.dynamic_attributes[attrName].filter((_, i) => i !== optionIndex)
+        };
+        setFormData(prev => ({
+            ...prev,
+            dynamic_attributes: newAttrs,
+            pricing_matrix: generatePricingMatrix(newAttrs)
+        }));
+    };
+
+    const updateMatrixRow = (index: number, field: string, value: string) => {
+        const newMatrix = [...formData.pricing_matrix];
+        newMatrix[index] = { ...newMatrix[index], [field]: value };
+        setFormData(prev => ({ ...prev, pricing_matrix: newMatrix }));
+    };
+
+    const handleUploadVariantImage = (index: number) => {
+        if (!widgetRef.current) return;
+
+        // Temporarily override the callback for variant image
+        const variantWidget = (window as any).cloudinary.createUploadWidget(
+            {
+                cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
+                uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
+                multiple: false,
+                maxFiles: 1,
+                clientAllowedFormats: ["jpg", "png", "webp", "jpeg"],
+                styles: { /* same styles */ }
+            },
+            (error: any, result: any) => {
+                if (!error && result && result.event === "success") {
+                    updateMatrixRow(index, 'image_url', result.info.secure_url);
+                }
+            }
+        );
+        variantWidget.open();
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -114,26 +304,42 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
             if (!formData.sku.trim()) {
                 throw new Error('SKU is required');
             }
+            const updatedData = {
+                merchant_id: user?.id,
+                name: formData.name,
+                sku: formData.sku.trim().toUpperCase(),
+                price: parseFloat(formData.price),
+                compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
+                category: formData.category,
+                stock: parseInt(formData.stock),
+                image_url: imageUrls[0], // First image as main image
+                image_urls: imageUrls,
+                is_returnable: formData.is_returnable,
+                description: formData.description,
+                seo_title: formData.seo_title,
+                meta_description: formData.meta_description,
+                slug: formData.slug,
+                alt_text: formData.alt_text,
+                tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+                dynamic_attributes: formData.dynamic_attributes,
+                pricing_matrix: formData.pricing_matrix,
+                avg_rating: parseFloat(formData.avg_rating || '0'),
+                total_reviews: parseInt(formData.total_reviews || '0')
+            };
 
-            const { error } = await supabase
-                .from('products')
-                .insert({
-                    merchant_id: user?.id,
-                    name: formData.name,
-                    sku: formData.sku.trim().toUpperCase(),
-                    price: parseFloat(formData.price),
-                    compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
-                    category: formData.category,
-                    stock: parseInt(formData.stock),
-                    image_url: imageUrls[0], // First image as main image
-                    image_urls: imageUrls,
-                    is_returnable: formData.is_returnable
-                });
+            let query;
+            if (productId) {
+                query = supabase.from('products').update(updatedData).eq('id', productId);
+            } else {
+                query = supabase.from('products').insert(updatedData);
+            }
 
-            if (error) throw error;
-            useToastStore.getState().show('Product added successfully!', 'success');
-            onSuccess();
-            onClose();
+            const { error: submitError } = await query;
+            if (submitError) throw submitError;
+
+            toast.show(`Product ${productId ? 'updated' : 'added'} successfully!`, 'success');
+            onSuccess?.();
+            onClose?.();
         } catch (err) {
             useToastStore.getState().show('Error: ' + (err as Error).message, 'error');
         } finally {
@@ -156,7 +362,7 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
             >
                 <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] backdrop-blur-xl">
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight">Add New Product</h2>
+                        <h2 className="text-2xl font-black tracking-tight">{productId ? 'Edit Product' : 'Add New Product'}</h2>
                         <p className="text-xs font-bold opacity-40 uppercase tracking-widest mt-1 text-primary">Merchant Portal</p>
                     </div>
                     <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all hover:scale-110 active:scale-90">
@@ -315,6 +521,232 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Variants Configurator */}
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Variant Configuration</label>
+                                {formData.category && (
+                                    <span className="text-[10px] font-bold text-primary opacity-80 uppercase">
+                                        Optimization: {formData.category === 'Electronics' ? 'RAM, Storage, Color' : formData.category === 'Fashion' ? 'Size, Color' : 'Custom'}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-6">
+                                {/* Attribute Builder */}
+                                <div className="space-y-4">
+                                    {Object.entries(formData.dynamic_attributes).map(([attrName, options]) => (
+                                        <div key={attrName} className="border border-white/10 rounded-xl p-4 space-y-4 bg-black/20">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-bold text-sm tracking-wide">{attrName}</h4>
+                                                <button type="button" onClick={() => handleRemoveAttribute(attrName)} className="p-1 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {options.map((opt, i) => (
+                                                    <div key={i} className="bg-white/10 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm">
+                                                        <span>{opt}</span>
+                                                        <button type="button" onClick={() => handleRemoveOption(attrName, i)} className="opacity-50 hover:opacity-100 hover:text-red-400">
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder={`Add ${attrName}...`}
+                                                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-primary/50"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                handleAddOption(attrName, e.currentTarget.value.trim());
+                                                                e.currentTarget.value = '';
+                                                            }
+                                                        }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            const input = (e.currentTarget as any).previousElementSibling as HTMLInputElement;
+                                                            if (input.value.trim()) {
+                                                                handleAddOption(attrName, input.value.trim());
+                                                                input.value = '';
+                                                            }
+                                                        }}
+                                                        className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            id="new-attr-input"
+                                            placeholder="New Attribute (e.g. Color, Size, RAM)"
+                                            className="bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 text-sm outline-none focus:border-primary/50 flex-grow"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const input = document.getElementById('new-attr-input') as HTMLInputElement;
+                                                const val = input.value.trim();
+                                                if (val) {
+                                                    handleAddAttribute(val);
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            className="px-4 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
+                                        >
+                                            <Plus className="w-4 h-4" /> Add
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Pricing & Image Matrix */}
+                                {formData.pricing_matrix.length > 0 && (
+                                    <div className="space-y-3 pt-4 border-t border-white/5">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Inventory Matrix</label>
+                                        <div className="overflow-x-auto custom-scrollbar">
+                                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                                <thead className="text-[10px] uppercase font-black opacity-50 bg-white/5">
+                                                    <tr>
+                                                        <th className="p-3 rounded-tl-lg">Variant</th>
+                                                        <th className="p-3">Price (Rs)</th>
+                                                        <th className="p-3">Pieces</th>
+                                                        <th className="p-3 rounded-tr-lg">Image</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {formData.pricing_matrix.map((row, idx) => (
+                                                        <tr key={idx} className="hover:bg-white/[0.02]">
+                                                            <td className="p-3 font-semibold text-primary">
+                                                                {Object.values(row.variant_combo).join(' / ')}
+                                                            </td>
+                                                            <td className="p-2">
+                                                                <input
+                                                                    type="number"
+                                                                    value={row.price}
+                                                                    onChange={e => updateMatrixRow(idx, 'price', e.target.value)}
+                                                                    className="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1 outline-none focus:border-primary"
+                                                                />
+                                                            </td>
+                                                            <td className="p-2">
+                                                                <input
+                                                                    type="number"
+                                                                    value={row.stock}
+                                                                    onChange={e => updateMatrixRow(idx, 'stock', e.target.value)}
+                                                                    className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 outline-none focus:border-primary"
+                                                                />
+                                                            </td>
+                                                            <td className="p-2">
+                                                                {row.image_url ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <img src={row.image_url} alt="Variant" className="w-8 h-8 rounded-md object-cover border border-white/10" />
+                                                                        <button type="button" onClick={() => updateMatrixRow(idx, 'image_url', '')} className="text-[10px] text-red-400 hover:text-red-300">Clear</button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleUploadVariantImage(idx)}
+                                                                        className="flex items-center gap-1 text-[10px] font-bold text-white/50 hover:text-primary transition-colors bg-white/5 px-2 py-1 rounded-md border border-white/10"
+                                                                    >
+                                                                        <Upload className="w-3 h-3" /> Upload
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Search & Discovery (SEO) */}
+                    <div className="pt-4 border-t border-white/5 space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Search & Discovery (SEO)</label>
+
+                        <div>
+                            <label className="text-[10px] font-bold opacity-40 px-1">SEO Title</label>
+                            <input
+                                type="text"
+                                value={formData.seo_title}
+                                onChange={e => setFormData({ ...formData, seo_title: e.target.value })}
+                                className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors font-bold mt-1"
+                                placeholder="Auto-generated if left blank"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold opacity-40 px-1">Meta Description</label>
+                            <textarea
+                                value={formData.meta_description}
+                                onChange={e => setFormData({ ...formData, meta_description: e.target.value })}
+                                className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors mt-1 resize-none h-24"
+                                placeholder="Auto-generated if left blank"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-bold opacity-40 px-1">Search Tags (Comma separated)</label>
+                                <input
+                                    type="text"
+                                    value={formData.tags}
+                                    onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors mt-1 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold opacity-40 px-1">Image Alt Text</label>
+                                <input
+                                    type="text"
+                                    value={formData.alt_text}
+                                    onChange={e => setFormData({ ...formData, alt_text: e.target.value })}
+                                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors mt-1 text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Manual Rating Control */}
+                    <div className="pt-4 border-t border-white/5 space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 px-1">Manual Rating Control</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-bold opacity-40 px-1">Average Rating (1.0 - 5.0)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    max="5"
+                                    value={formData.avg_rating}
+                                    onChange={e => setFormData({ ...formData, avg_rating: e.target.value })}
+                                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors font-bold mt-1"
+                                    placeholder="e.g. 4.8"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold opacity-40 px-1">Total Reviews Count</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={formData.total_reviews}
+                                    onChange={e => setFormData({ ...formData, total_reviews: e.target.value })}
+                                    className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors font-bold mt-1"
+                                    placeholder="e.g. 124"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="pt-4">
@@ -328,7 +760,7 @@ export const ProductForm = ({ onClose, onSuccess }: ProductFormProps) => {
                         </button>
                     </div>
                 </form>
-            </motion.div>
-        </motion.div>
+            </motion.div >
+        </motion.div >
     );
 };

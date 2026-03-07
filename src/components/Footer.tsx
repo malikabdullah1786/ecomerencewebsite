@@ -1,4 +1,5 @@
 import { MapPin, Phone, Mail, Instagram, Twitter, Facebook } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useProductStore } from '../stores/useProductStore';
 
 const POPULAR_SEARCHES = [
@@ -10,37 +11,42 @@ const POPULAR_SEARCHES = [
 ];
 
 export const Footer = () => {
-    // ── Dynamic categories from live product store (Daraz-style) ──
     const products = useProductStore(s => s.products);
 
-    // Group in-stock products by category → { "Men's Clothing": ["Leather Wallet", "T-Shirt", ...], ... }
+    // Store { name, sku } so we can build clickable links
     const dynamicCategories = products
         .filter(p => p.stock > 0)
-        .reduce((acc: { [cat: string]: string[] }, p) => {
+        .reduce((acc: { [cat: string]: { name: string; sku: string }[] }, p) => {
             const cat = p.category || 'Other';
             if (!acc[cat]) acc[cat] = [];
-            if (acc[cat].length < 7 && !acc[cat].includes(p.name)) acc[cat].push(p.name);
+            if (acc[cat].length < 7 && !acc[cat].find(x => x.name === p.name)) {
+                acc[cat].push({ name: p.name, sku: p.sku });
+            }
             return acc;
         }, {});
 
-    // Convert to array, max 6 categories to keep footer clean
     const categoryEntries = Object.entries(dynamicCategories).slice(0, 6);
 
     return (
-        <footer className="bg-white border-t border-gray-100 mt-10">
+        <footer className="bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 mt-10 no-print">
 
-            {/* ── SEO Content Block (Daraz-style) ── */}
-            <div className="border-b border-gray-100 py-12 px-5">
+            {/* ── SEO Content Section ── */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="border-b border-gray-100 dark:border-gray-800 py-12 px-5 text-foreground"
+            >
                 <div className="max-w-7xl mx-auto">
 
-                    {/* About Tarzify — keyword-rich paragraphs */}
+                    {/* About Tarzify */}
                     <div className="mb-10">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-gray-800 mb-4">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-gray-800 dark:text-gray-100 mb-4">
                             How Tarzify Transformed Online Shopping in Pakistan
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-gray-500 leading-relaxed font-medium">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
                             <div>
-                                <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-wide mb-2">Pakistan's Favourite Ecommerce Store</h3>
+                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Pakistan's Favourite Ecommerce Store</h3>
                                 <p>
                                     Tarzify is Pakistan's fastest-growing online ecommerce store, delivering premium products to customers
                                     across Lahore, Karachi, Islamabad, and every city in Pakistan. Whether you are looking for men's fashion,
@@ -49,7 +55,7 @@ export const Footer = () => {
                                 </p>
                             </div>
                             <div>
-                                <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-wide mb-2">Shop from Verified Merchants</h3>
+                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Shop from Verified Merchants</h3>
                                 <p>
                                     Every product listed on Tarzify comes from verified merchants and trusted sellers across Pakistan.
                                     We believe in quality-first online shopping, which is why every order is carefully reviewed before
@@ -58,7 +64,7 @@ export const Footer = () => {
                                 </p>
                             </div>
                             <div>
-                                <h3 className="font-black text-gray-700 uppercase text-[11px] tracking-wide mb-2">Exclusive Offers & Fast Delivery</h3>
+                                <h3 className="font-black text-gray-700 dark:text-gray-300 uppercase text-[11px] tracking-wide mb-2">Exclusive Offers &amp; Fast Delivery</h3>
                                 <p>
                                     Tarzify offers exclusive discounts, seasonal sales, and daily deals across all categories. Our
                                     logistics network covers the entire country, ensuring your order arrives within 2–5 business days.
@@ -69,20 +75,24 @@ export const Footer = () => {
                         </div>
                     </div>
 
-                    {/* Top Categories & Brands — dynamic from live in-stock products */}
-                    <div className="border-t border-gray-100 pt-8 mb-8">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-5">Top Categories &amp; Available Products</h3>
+                    {/* Top Categories */}
+                    <div className="border-t border-gray-100 dark:border-gray-800 pt-8 mb-8">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-5">Top Categories &amp; Available Products</h3>
                         {categoryEntries.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
                                 {categoryEntries.map(([catName, productNames]) => (
                                     <div key={catName}>
-                                        <p className="text-[11px] font-black uppercase text-gray-700 mb-2 tracking-wide">{catName}</p>
+                                        <p className="text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-2 tracking-wide">{catName}</p>
                                         <ul className="space-y-1">
-                                            {(productNames as string[]).map((name: string) => (
-                                                <li key={name}>
-                                                    <span className="text-[11px] text-gray-400 hover:text-primary cursor-pointer transition-colors">
+                                            {(productNames as { name: string; sku: string }[]).map(({ name, sku }) => (
+                                                <li key={sku}>
+                                                    <a
+                                                        href={`#product/${sku}`}
+                                                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                                        className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-primary hover:underline transition-all cursor-pointer font-medium"
+                                                    >
                                                         {name}
-                                                    </span>
+                                                    </a>
                                                 </li>
                                             ))}
                                         </ul>
@@ -93,22 +103,22 @@ export const Footer = () => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
                                 {[1, 2, 3, 4, 5, 6].map(i => (
                                     <div key={i} className="space-y-2">
-                                        <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                                        {[1, 2, 3, 4].map(j => <div key={j} className="h-2.5 w-28 bg-gray-50 rounded animate-pulse" />)}
+                                        <div className="h-3 w-20 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                                        {[1, 2, 3, 4].map(j => <div key={j} className="h-2.5 w-28 bg-gray-50 dark:bg-gray-800/60 rounded animate-pulse" />)}
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* Popular Searches */}
-                    <div className="border-t border-gray-100 pt-6">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Popular Searches on Tarzify</h3>
+                    {/* Popular Searches (HIDDEN FROM UI, KEPT FOR SEO) */}
+                    <div className="sr-only border-t border-gray-100 dark:border-gray-800 pt-6">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Popular Searches on Tarzify</h3>
                         <div className="flex flex-wrap gap-2">
                             {POPULAR_SEARCHES.map(term => (
                                 <span
                                     key={term}
-                                    className="px-3 py-1 text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 rounded-full hover:text-primary hover:border-primary/30 cursor-pointer transition-colors"
+                                    className="px-3 py-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full hover:text-primary hover:border-primary/30 cursor-pointer transition-colors"
                                 >
                                     {term}
                                 </span>
@@ -116,10 +126,15 @@ export const Footer = () => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* ── Main Footer Links ── */}
-            <div className="py-12 px-5">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="py-12 px-5"
+            >
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-16 mb-12">
 
@@ -128,30 +143,46 @@ export const Footer = () => {
                             <img
                                 src="/logo.png"
                                 alt="Tarzify Logo — Online Shopping Pakistan"
-                                className="w-14 h-14 rounded-full object-cover shadow-xl border-2 border-primary/20 p-1"
+                                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                className="w-14 h-14 rounded-full object-cover shadow-xl border-2 border-primary/20 p-1 cursor-pointer hover:scale-110 transition-transform"
                             />
-                            <p className="text-xs text-gray-400 leading-relaxed font-medium">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed font-medium">
                                 Pakistan's premium ecommerce store. Fast delivery, secure payments, and quality products — only at Tarzify.
                             </p>
-                            {/* Trust badges */}
                             <div className="flex flex-wrap gap-2 pt-1">
                                 {['Cash on Delivery', 'TCS Verified', 'Secure Checkout', 'FBR Registered'].map(tag => (
-                                    <span key={tag} className="text-[9px] font-black uppercase tracking-wider border border-gray-200 px-2 py-1 rounded-full text-gray-400">
+                                    <button
+                                        key={tag}
+                                        onClick={() => {
+                                            const hashMap: { [key: string]: string } = {
+                                                'Cash on Delivery': '#shipping-policy',
+                                                'TCS Verified': '#shipping-policy',
+                                                'Secure Checkout': '#privacy-policy',
+                                                'FBR Registered': '#terms-conditions'
+                                            };
+                                            window.location.hash = hashMap[tag] || '#';
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="text-[9px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 px-2 py-1 rounded-full text-gray-400 dark:text-gray-500 hover:border-primary/50 hover:text-primary transition-colors cursor-pointer"
+                                    >
                                         {tag}
-                                    </span>
+                                    </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* Legal Links */}
                         <div className="space-y-5">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300">Legal &amp; Policies</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-600">Legal &amp; Policies</h4>
                             <div className="flex flex-col gap-3">
                                 {['Privacy Policy', 'Returns & Refunds', 'Shipping Policy', 'Terms & Conditions'].map((text, i) => (
                                     <button
                                         key={i}
-                                        onClick={() => window.location.hash = `#${text.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`}
-                                        className="text-left text-xs font-bold text-gray-400 hover:text-primary transition-colors uppercase tracking-widest"
+                                        onClick={() => {
+                                            window.location.hash = `#${text.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`;
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="text-left text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-primary transition-colors uppercase tracking-widest cursor-pointer hover:underline"
                                     >
                                         {text}
                                     </button>
@@ -161,37 +192,46 @@ export const Footer = () => {
 
                         {/* Contact */}
                         <div className="space-y-5">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300">Get in Touch</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-600">Get in Touch</h4>
                             <div className="space-y-4">
-                                <div className="flex items-center gap-3 text-gray-400">
-                                    <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <a
+                                    href="https://www.google.com/maps/search/Lahore,+Pakistan"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group"
+                                >
+                                    <div className="w-8 h-8 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full flex items-center justify-center flex-shrink-0 group-hover:border-primary/30">
                                         <MapPin className="w-3.5 h-3.5 text-primary" />
                                     </div>
-                                    <address className="not-italic text-xs font-bold uppercase tracking-wider">Lahore, Pakistan</address>
-                                </div>
-                                <div className="flex items-center gap-3 text-gray-400">
-                                    <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <address className="not-italic text-xs font-bold uppercase tracking-wider cursor-pointer">Lahore, Pakistan</address>
+                                </a>
+                                <a
+                                    href="tel:+923094561786"
+                                    className="flex items-center gap-3 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group"
+                                >
+                                    <div className="w-8 h-8 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full flex items-center justify-center flex-shrink-0 group-hover:border-primary/30">
                                         <Phone className="w-3.5 h-3.5 text-primary" />
                                     </div>
-                                    <a href="tel:+923094561786" className="text-xs font-bold uppercase tracking-wider hover:text-primary transition-colors">
-                                        +92 309 456 1786
-                                    </a>
-                                </div>
-                                <div className="flex items-center gap-3 text-gray-400">
-                                    <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span className="text-xs font-bold uppercase tracking-wider cursor-pointer font-mono">+92 309 456 1786</span>
+                                </a>
+                                <a
+                                    href="mailto:support@tarzify.com"
+                                    className="flex items-center gap-3 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group"
+                                >
+                                    <div className="w-8 h-8 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-full flex items-center justify-center flex-shrink-0 group-hover:border-primary/30">
                                         <Mail className="w-3.5 h-3.5 text-primary" />
                                     </div>
-                                    <span className="text-xs font-bold tracking-wider">support@tarzify.com</span>
-                                </div>
+                                    <span className="text-xs font-bold tracking-wider cursor-pointer">support@tarzify.com</span>
+                                </a>
                             </div>
                         </div>
 
                         {/* Socials */}
                         <div className="space-y-5">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300">Follow Tarzify</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-600">Follow Tarzify</h4>
                             <div className="flex gap-3">
                                 {[
-                                    { Icon: Instagram, label: 'Instagram', href: 'https://instagram.com/tarzify' },
+                                    { Icon: Instagram, label: 'Instagram', href: 'https://instagram.com/tarzifyofficial' },
                                     { Icon: Twitter, label: 'Twitter', href: 'https://twitter.com/tarzify' },
                                     { Icon: Facebook, label: 'Facebook', href: 'https://facebook.com/tarzify' },
                                 ].map(({ Icon, label, href }) => (
@@ -201,29 +241,29 @@ export const Footer = () => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         aria-label={label}
-                                        className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm"
+                                        className="w-10 h-10 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm text-gray-500 dark:text-gray-400"
                                     >
                                         <Icon className="w-4 h-4" />
                                     </a>
                                 ))}
                             </div>
-                            <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-relaxed">
                                 Stay updated with the latest deals, new arrivals, and exclusive offers from Tarzify Pakistan.
                             </p>
                         </div>
                     </div>
 
                     {/* Copyright bar */}
-                    <div className="pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-center">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300">
+                    <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300 dark:text-gray-600">
                             © {new Date().getFullYear()} Tarzify Ecommerce Store Pakistan. All Rights Reserved.
                         </p>
-                        <p className="text-[10px] text-gray-300 font-medium">
+                        <p className="text-[10px] text-gray-300 dark:text-gray-600 font-medium">
                             Online Shopping Pakistan | Fast Delivery | Cash on Delivery | Tarzify
                         </p>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         </footer>
     );
 };

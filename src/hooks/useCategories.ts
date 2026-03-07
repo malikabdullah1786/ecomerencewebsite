@@ -5,6 +5,7 @@ import { useToastStore } from '../stores/useToastStore';
 export interface Category {
     id: number;
     name: string;
+    image_url?: string;
     created_at: string;
 }
 
@@ -31,11 +32,11 @@ export const useCategories = () => {
         }
     };
 
-    const addCategory = async (name: string) => {
+    const addCategory = async (name: string, image_url?: string) => {
         try {
             const { data, error } = await supabase
                 .from('categories')
-                .insert([{ name }])
+                .insert([{ name, image_url }])
                 .select()
                 .single();
 
@@ -46,6 +47,26 @@ export const useCategories = () => {
         } catch (err: any) {
             console.error('Error adding category:', err);
             toast.show('Failed to add category: ' + err.message, 'error');
+            return null;
+        }
+    };
+
+    const updateCategory = async (id: number, updates: Partial<Category>) => {
+        try {
+            const { data, error } = await supabase
+                .from('categories')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            setCategories(prev => prev.map(c => c.id === id ? data : c));
+            toast.show('Category updated successfully', 'success');
+            return data;
+        } catch (err: any) {
+            console.error('Error updating category:', err);
+            toast.show('Failed to update category', 'error');
             return null;
         }
     };
@@ -72,5 +93,5 @@ export const useCategories = () => {
         fetchCategories();
     }, []);
 
-    return { categories, loading, refetch: fetchCategories, addCategory, deleteCategory };
+    return { categories, loading, refetch: fetchCategories, addCategory, updateCategory, deleteCategory };
 };

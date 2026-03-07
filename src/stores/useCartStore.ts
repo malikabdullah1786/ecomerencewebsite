@@ -16,7 +16,7 @@ interface CartItem {
 
 interface CartState {
     items: CartItem[];
-    addItem: (product: any) => void;
+    addItem: (product: any, quantity?: number) => void;
     removeItem: (id: number) => void;
     updateQuantity: (id: number, change: number) => void;
     clearCart: () => void;
@@ -29,7 +29,7 @@ export const useCartStore = create<CartState>()(
     persist(
         (set, get) => ({
             items: [],
-            addItem: (product) => {
+            addItem: (product, quantity = 1) => {
                 const currentItems = get().items;
                 const existingItem = currentItems.find(item => item.id === product.id);
                 const availableStock = product.stock ?? 0;
@@ -37,20 +37,25 @@ export const useCartStore = create<CartState>()(
                 if (availableStock <= 0) return;
                 let newItems: CartItem[];
                 if (existingItem) {
-                    if (existingItem.quantity >= availableStock) {
+                    const totalRequested = existingItem.quantity + quantity;
+                    if (totalRequested > availableStock) {
                         useToastStore.getState().show(`Only ${availableStock} units available in stock.`, 'error');
                         return;
                     }
                     newItems = currentItems.map(item =>
-                        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                        item.id === product.id ? { ...item, quantity: totalRequested } : item
                     );
                 } else {
+                    if (quantity > availableStock) {
+                        useToastStore.getState().show(`Only ${availableStock} units available in stock.`, 'error');
+                        return;
+                    }
                     const itemImage = product.image || product.image_url;
                     newItems = [...currentItems, {
                         ...product,
                         image: itemImage,
                         compare_at_price: product.compare_at_price,
-                        quantity: 1,
+                        quantity: quantity,
                         stock: availableStock
                     }];
                 }
@@ -100,8 +105,28 @@ export const useCartStore = create<CartState>()(
                     i.id === id ? { ...i, quantity: newQuantity } : i
                 );
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
+
+                // Sync to DB if logged in
+                const user = (useAuthStore.getState() as any).user;
+                if (user) {
+                    supabase.from('cart_items').upsert({
+                        user_id: user.id,
+                        product_id: id,
+                        quantity: newQuantity
+                    }, { onConflict: 'user_id,product_id' }).then();
+                }
             },
-            clearCart: () => set({ items: [], total: 0 }),
+            clearCart: () => {
+                set({ items: [], total: 0 });
+                // Sync to DB if logged in
+                const user = (useAuthStore.getState() as any).user;
+                if (user) {
+                    supabase.from('cart_items')
+                        .delete()
+                        .eq('user_id', user.id)
+                        .then();
+                }
+            },
             setItems: (items) => set({
                 items,
                 total: items.reduce((sum, item) => sum + item.price * item.quantity, 0)

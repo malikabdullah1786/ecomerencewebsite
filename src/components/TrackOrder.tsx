@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Search, Package, Truck, CheckCircle, Clock, X, Eye, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
-    const [orderId, setOrderId] = useState('');
+export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, initialOrderId?: string }) => {
+    const [orderId, setOrderId] = useState(initialOrderId || '');
     const [status, setStatus] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
 
             const { data, error } = await supabase
                 .from('orders')
-                .select('*')
+                .select('order_number, status, total_amount, tracking_number, courier_name, shipping_proof_url')
                 .eq('order_number', id)
                 .single();
 
@@ -35,14 +36,36 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
         }
     };
 
+    // Lock background scroll while modal is open
+    useEffect(() => {
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, []);
+
+    // Auto-track if initial ID provided
+    useEffect(() => {
+        if (initialOrderId) {
+            const timer = setTimeout(() => {
+                const mockEvent = { preventDefault: () => { } } as React.FormEvent;
+                handleTrack(mockEvent);
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [initialOrderId]);
+
     const getStatusStep = (currentStatus: string) => {
         const steps = ['pending', 'processing', 'shipped', 'delivered'];
         return steps.indexOf(currentStatus.toLowerCase());
     };
 
-    return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] overflow-y-auto">
-            <div className="min-h-full flex items-center justify-center p-6 py-12">
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] overflow-y-auto overscroll-contain track-order-portal"
+            data-lenis-prevent
+            onWheel={(e) => e.stopPropagation()}
+        >
+            <div className="min-h-screen w-full flex items-center justify-center p-6 py-12">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -136,7 +159,31 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Tracking Number</p>
-                                            <p className="font-black text-primary select-all">{status.tracking_number}</p>
+                                            {(() => {
+                                                const getTrackingUrl = (courier: string, num: string) => {
+                                                    const c = courier?.toLowerCase() || '';
+                                                    if (c.includes('tcs')) return `https://www.tcsexpress.com/track/${num}`;
+                                                    if (c.includes('leopard')) return `https://www.leopardscourier.com/leopards-tracking?tracking_number=${num}`;
+                                                    if (c.includes('m&p') || c.includes('m and p')) return `https://www.mulphilog.com/tracking-result?tracking_no=${num}`;
+                                                    if (c.includes('trax')) return `https://trax.pk/tracking?tracking_number=${num}`;
+                                                    if (c.includes('call')) return `https://callcourier.com.pk/tracking/?cn=${num}`;
+                                                    return null;
+                                                };
+                                                const url = getTrackingUrl(status.courier_name, status.tracking_number);
+                                                return url ? (
+                                                    <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="font-black text-primary select-all hover:underline flex items-center gap-1 group"
+                                                    >
+                                                        {status.tracking_number}
+                                                        <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </a>
+                                                ) : (
+                                                    <p className="font-black text-primary select-all">{status.tracking_number}</p>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                     {/* Shipping Proof Section */}
@@ -178,6 +225,7 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
                     )}
                 </motion.div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

@@ -4,7 +4,7 @@ import {
     Package, Truck, BarChart3, Plus, X, Edit2,
     ShoppingBag, Menu,
     Loader2,
-    Clock, CheckCircle2, QrCode, Link
+    Clock, CheckCircle2, QrCode
 } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useToastStore } from '../stores/useToastStore';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { fetchWithTimeout } from '../lib/fetchWithTimeout';
+import { ProductForm as UnifiedProductForm } from '../components/ProductForm';
 
 declare global {
     interface Window {
@@ -41,86 +42,16 @@ const QRScannerPopup = ({ onScan, onClose }: { onScan: (data: string) => void, o
 
 import { useCategories } from '../hooks/useCategories';
 
-interface ProductForm {
-    id?: number;
-    name: string;
-    sku: string;
-    price: string | number;
-    stock: string | number;
-    category: string;
-    image_url: string;
-    image_urls: string[];
-    description: string;
-    is_returnable: boolean;
-    compare_at_price?: string | number;
-    // SEO
-    seo_title?: string;
-    meta_description?: string;
-    slug?: string;
-    alt_text?: string;
-    tags?: string; // stored as comma-separated string in the form
-}
-
+// Unified Product Form is robustly typed in its own file.
 export const MerchantDashboard = () => {
     const [activeTab, setActiveTab] = useState('inventory');
     const { products, loading: productsLoading, refetch: refetchProducts } = useProducts();
-    const { categories } = useCategories();
     const [orders, setOrders] = useState<any[]>([]);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showQR, setShowQR] = useState(false);
     const { user, role } = useAuthStore();
     const [uploading, setUploading] = useState(false);
     const toast = useToastStore();
-
-    // Form State
-    const [newProduct, setNewProduct] = useState<ProductForm>({
-        name: '',
-        sku: '',
-        price: '',
-        stock: '',
-        category: 'Fashion',
-        image_url: '',
-        image_urls: [],
-        description: '',
-        is_returnable: true,
-        compare_at_price: '',
-        seo_title: '',
-        meta_description: '',
-        slug: '',
-        alt_text: '',
-        tags: '',
-    });
-
-    // Auto-fill SEO fields when merchant types the product name
-    const handleNameChange = (name: string, isEditing = false) => {
-        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        const seoTitle = name ? `Buy ${name} Online in Pakistan | Tarzify` : '';
-        const altText = name ? `${name} - Buy Online at Tarzify Pakistan` : '';
-        const autoTags = name ? `${name.toLowerCase()}, buy online pakistan, tarzify, ${newProduct.category?.toLowerCase() || ''}` : '';
-        if (isEditing) {
-            setEditingProduct(prev => prev ? ({
-                ...prev,
-                name,
-                slug: prev.slug || slug,
-                seo_title: prev.seo_title || seoTitle,
-                alt_text: prev.alt_text || altText,
-            }) : null);
-        } else {
-            setNewProduct(prev => ({
-                ...prev,
-                name,
-                slug: prev.slug || slug,
-                seo_title: prev.seo_title || seoTitle,
-                alt_text: prev.alt_text || altText,
-                tags: prev.tags || autoTags,
-            }));
-        }
-    };
-
-    const [editingProduct, setEditingProduct] = useState<ProductForm | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Tracking State
     const [trackingData, setTrackingData] = useState({
         orderId: null as number | null,
         tracking_number: '',
@@ -128,9 +59,6 @@ export const MerchantDashboard = () => {
         shipping_proof_url: ''
     });
 
-    const [urlInput, setUrlInput] = useState('');
-    const [editUrlInput, setEditUrlInput] = useState('');
-    const [urlError, setUrlError] = useState(false);
     const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<any | null>(null);
 
     // Carts State
@@ -289,27 +217,39 @@ export const MerchantDashboard = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('images', file); // Use 'images' key as backend expects array but handles single here too
+        // Backend expects base64 strings in JSON, not FormData
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            setUploading(true);
 
-        try {
-            const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL}/products/upload`, {
-                method: 'POST',
-                body: formData
-            }, 30000); // 30s for file uploads
-            const data = await res.json();
+            try {
+                const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL}/products/upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        images: [base64] // Wrap in array as expected by API
+                    })
+                }, 30000); // 30s for file uploads
 
-            if (data.success) {
-                setTrackingData(prev => ({ ...prev, shipping_proof_url: data.imageUrls[0] }));
-            } else {
-                toast.show('Upload failed: ' + data.error, 'error');
+                const data = await res.json();
+
+                if (data.success) {
+                    setTrackingData(prev => ({ ...prev, shipping_proof_url: data.imageUrls[0] }));
+                    toast.show('Shipping proof uploaded successfully!', 'success');
+                } else {
+                    toast.show('Upload failed: ' + data.error, 'error');
+                }
+            } catch (error: any) {
+                toast.show('Upload error: ' + error.message, 'error');
+            } finally {
+                setUploading(false);
             }
-        } catch (error: any) {
-            toast.show('Upload error: ' + error.message, 'error');
-        } finally {
-            setUploading(false);
-        }
+        };
+        reader.onerror = () => {
+            toast.show('Error reading file', 'error');
+        };
     };
 
     const handleAssignTracking = async (e: React.FormEvent) => {
@@ -336,154 +276,6 @@ export const MerchantDashboard = () => {
             toast.show('Error assigning tracking: ' + error.message, 'error');
         }
     };
-
-    const handleImageUpload = (isEditing = false) => {
-        if (!window.cloudinary) {
-            toast.show('Cloudinary widget not loaded. Check internet or index.html.', 'error');
-            return;
-        }
-
-        const widget = window.cloudinary.createUploadWidget(
-            {
-                cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
-                uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
-                multiple: true,
-                maxFiles: 5,
-                sources: ['local', 'url', 'camera', 'facebook', 'instagram', 'google_drive', 'dropbox', 'image_search'],
-                clientAllowedFormats: ['jpg', 'png', 'jpeg', 'webp'],
-                maxFileSize: 5000000, // 5MB
-            },
-            (error: any, result: any) => {
-                if (!error && result && result.event === "success") {
-                    const imageUrl = result.info.secure_url;
-                    if (isEditing) {
-                        setEditingProduct((prev: any) => ({
-                            ...prev,
-                            image_url: prev.image_url || imageUrl,
-                            image_urls: [...(prev.image_urls || []), imageUrl]
-                        }));
-                    } else {
-                        setNewProduct(prev => ({
-                            ...prev,
-                            image_url: prev.image_url || imageUrl,
-                            image_urls: [...(prev.image_urls || []), imageUrl]
-                        }));
-                    }
-                }
-            }
-        );
-        widget.open();
-    };
-
-    const removeImage = (index: number, isEditing = false) => {
-        if (isEditing) {
-            setEditingProduct((prev: any) => {
-                const currentUrls = prev.image_urls || [];
-                const newUrls = currentUrls.filter((_: any, i: number) => i !== index);
-                return {
-                    ...prev,
-                    image_urls: newUrls,
-                    image_url: prev.image_url === currentUrls[index] ? newUrls[0] || '' : prev.image_url
-                };
-            });
-        } else {
-            setNewProduct(prev => {
-                const currentUrls = prev.image_urls || [];
-                const newUrls = currentUrls.filter((_, i) => i !== index);
-                return {
-                    ...prev,
-                    image_urls: newUrls,
-                    image_url: prev.image_url === currentUrls[index] ? newUrls[0] || '' : prev.image_url
-                };
-            });
-        }
-    };
-
-    const handleAddProduct = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            if (!user) throw new Error('You must be logged in.');
-
-            const tagArray = newProduct.tags
-                ? newProduct.tags.split(',').map(t => t.trim()).filter(Boolean)
-                : [];
-
-            const { error } = await supabase.from('products').insert({
-                merchant_id: user.id,
-                name: newProduct.name,
-                sku: newProduct.sku,
-                price: typeof newProduct.price === 'string' ? parseFloat(newProduct.price) : newProduct.price,
-                stock: typeof newProduct.stock === 'string' ? parseInt(newProduct.stock) : newProduct.stock,
-                category: newProduct.category,
-                image_url: newProduct.image_url || (newProduct.image_urls?.[0] || ''),
-                image_urls: newProduct.image_urls,
-                description: newProduct.description,
-                is_returnable: newProduct.is_returnable,
-                compare_at_price: newProduct.compare_at_price ? (typeof newProduct.compare_at_price === 'string' ? parseFloat(newProduct.compare_at_price) : newProduct.compare_at_price) : null,
-                seo_title: newProduct.seo_title || null,
-                meta_description: newProduct.meta_description || null,
-                slug: newProduct.slug || null,
-                alt_text: newProduct.alt_text || null,
-                tags: tagArray.length > 0 ? tagArray : null,
-            });
-
-            if (error) throw error;
-
-            toast.show('Product added successfully!', 'success');
-            setActiveTab('inventory');
-            setNewProduct({ name: '', sku: '', price: '', stock: '', category: 'Fashion', image_url: '', image_urls: [], description: '', is_returnable: true, seo_title: '', meta_description: '', slug: '', alt_text: '', tags: '' });
-            refetchProducts();
-        } catch (error: any) {
-            toast.show('Error adding product: ' + error.message, 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleUpdateProduct = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingProduct) return;
-        setIsSubmitting(true);
-        try {
-            const tagArray = editingProduct.tags
-                ? editingProduct.tags.split(',').map(t => t.trim()).filter(Boolean)
-                : [];
-
-            const { error } = await supabase
-                .from('products')
-                .update({
-                    name: editingProduct.name,
-                    sku: editingProduct.sku,
-                    price: typeof editingProduct.price === 'string' ? parseFloat(editingProduct.price) : editingProduct.price,
-                    stock: typeof editingProduct.stock === 'string' ? parseInt(editingProduct.stock) : editingProduct.stock,
-                    category: editingProduct.category,
-                    image_url: editingProduct.image_url,
-                    image_urls: editingProduct.image_urls,
-                    description: editingProduct.description,
-                    is_returnable: editingProduct.is_returnable,
-                    compare_at_price: editingProduct.compare_at_price ? (typeof editingProduct.compare_at_price === 'string' ? parseFloat(editingProduct.compare_at_price) : editingProduct.compare_at_price) : null,
-                    seo_title: editingProduct.seo_title || null,
-                    meta_description: editingProduct.meta_description || null,
-                    slug: editingProduct.slug || null,
-                    alt_text: editingProduct.alt_text || null,
-                    tags: tagArray.length > 0 ? tagArray : null,
-                })
-                .eq('id', editingProduct.id);
-
-            if (error) throw error;
-
-            toast.show('Product updated successfully!', 'success');
-            setEditingProduct(null);
-            setActiveTab('inventory');
-            refetchProducts();
-        } catch (error: any) {
-            toast.show('Error updating product: ' + error.message, 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
     const handleDeleteProduct = async (id: number) => {
         if (!confirm('Are you sure you want to delete this product?')) return;
         try {
@@ -589,8 +381,7 @@ export const MerchantDashboard = () => {
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={() => {
-                                            setEditingProduct({ ...product, price: product.price.toString(), stock: product.stock.toString(), description: product.description || '', image_urls: product.image_urls || [], is_returnable: !!product.is_returnable, tags: Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '') });
-                                            setActiveTab('edit-product');
+                                            setActiveTab(`edit-product-${product.id}`);
                                         }} className="p-3 bg-foreground/5 rounded-xl hover:bg-foreground/10"><Edit2 className="w-4 h-4" /></button>
                                         <button onClick={() => handleDeleteProduct(product.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white"><X className="w-4 h-4" /></button>
                                     </div>
@@ -618,266 +409,33 @@ export const MerchantDashboard = () => {
                 )}
 
                 {activeTab === 'add-product' && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="max-w-4xl space-y-12"
-                    >
-                        <div className="flex items-center gap-6 mb-8">
-                            <button onClick={() => setActiveTab('inventory')} className="p-4 bg-foreground/5 rounded-2xl hover:bg-foreground/10 transition-colors">
-                                <Plus className="w-6 h-6 rotate-45" />
-                            </button>
-                            <h2 className="text-2xl font-black italic uppercase tracking-tighter">Launch New Product</h2>
-                        </div>
-
-                        <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-10 pb-20">
-                            <div className="col-span-2 space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Name</label>
-                                <input required type="text" value={newProduct.name} onChange={e => handleNameChange(e.target.value, false)} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all text-xl font-bold" placeholder="Enter product name..." />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">SKU (Unique ID)</label>
-                                <input required type="text" value={newProduct.sku} onChange={e => setNewProduct({ ...newProduct, sku: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all font-mono" placeholder="e.g., SKU-123" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Price (Rs.)</label>
-                                <input required type="number" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all font-black text-2xl" placeholder="0" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Original Price (Was)</label>
-                                <input type="number" value={newProduct.compare_at_price} onChange={e => setNewProduct({ ...newProduct, compare_at_price: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all opacity-30 font-black" placeholder="Optional" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Stock</label>
-                                <input required type="number" min="0" value={newProduct.stock} onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all font-black" placeholder="Available units" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Category</label>
-                                <select value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all cursor-pointer font-bold bg-background">
-                                    <option value="">Select Category</option>
-                                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="col-span-2 space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Description</label>
-                                <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className="w-full glass border-none rounded-3xl p-6 min-h-[150px] outline-none transition-all" placeholder="Tell customers about this product..." />
-                            </div>
-                            <div className="col-span-2 flex items-center gap-4 p-6 glass rounded-3xl">
-                                <input type="checkbox" checked={newProduct.is_returnable} onChange={e => setNewProduct({ ...newProduct, is_returnable: e.target.checked })} className="w-6 h-6 rounded-lg accent-primary" />
-                                <label className="text-lg font-black italic uppercase tracking-tighter">Allow Returns</label>
-                            </div>
-
-                            <div className="col-span-2 space-y-6 pt-10 border-t border-white/5">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-2xl font-black italic uppercase tracking-tighter">Product Photos</h3>
-                                    <p className="text-xs font-bold opacity-30 uppercase">{newProduct.image_urls.length} Photos Added</p>
-                                </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    <div
-                                        onClick={() => handleImageUpload(false)}
-                                        className={`flex flex-col items-center justify-center aspect-square border-2 border-dashed border-foreground/10 rounded-[2.5rem] cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all ${uploading ? 'opacity-50' : ''}`}
-                                    >
-                                        <Plus className="w-10 h-10 text-primary opacity-50" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest mt-3 opacity-30">Add Foto</span>
-                                    </div>
-
-                                    {newProduct.image_urls.map((url, idx) => (
-                                        <div key={idx} className="aspect-square rounded-[2.5rem] overflow-hidden relative group border border-foreground/5 bg-foreground/5 flex items-center justify-center">
-                                            {url && <img src={url} alt="Preview" className="w-full h-full object-cover" />}
-                                            <button type="button" onClick={() => removeImage(idx, false)} className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform"><X className="w-4 h-4" /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="col-span-2 space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest text-gray-400">External Image URL</label>
-                                <div className="relative group">
-                                    <Link className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30 text-black" />
-                                    <input
-                                        type="text"
-                                        placeholder="Paste image URL..."
-                                        value={urlInput}
-                                        onChange={e => { setUrlInput(e.target.value); setUrlError(false); }}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                if (urlInput && !urlError) {
-                                                    setNewProduct(prev => ({ ...prev, image_urls: [...prev.image_urls, urlInput], image_url: prev.image_url || urlInput }));
-                                                    setUrlInput('');
-                                                }
-                                            }
-                                        }}
-                                        className={`w-full bg-gray-50 border-2 ${urlError ? 'border-red-500' : 'border-transparent focus:border-primary'} rounded-3xl p-5 pl-14 outline-none transition-all text-black`}
-                                    />
-                                </div>
-                                {urlInput && urlInput.startsWith('http') && (
-                                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-gray-50 border border-gray-100 rounded-3xl flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white border border-gray-100 flex-shrink-0">
-                                            <img
-                                                src={urlInput}
-                                                alt="URL Preview"
-                                                className="w-full h-full object-contain"
-                                                onError={() => {
-                                                    // Only set error if it's definitely not an image, 
-                                                    // but we'll still allow adding it.
-                                                    console.warn('⚠️ Preview failed for URL:', urlInput);
-                                                }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase text-primary italic">Press Enter to add this link anyway</p>
-                                            <p className="text-[8px] opacity-40 uppercase font-bold mt-1">(Preview might fail due to site security)</p>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </div>
-
-                            {/* SEO Fields Section */}
-                            <div className="col-span-2 space-y-6 pt-10 border-t border-white/5">
-                                <div>
-                                    <h3 className="text-xl font-black italic uppercase tracking-tighter text-primary">SEO Settings</h3>
-                                    <p className="text-xs opacity-40 mt-1">Auto-filled from product name — edit to customize for better Google ranking</p>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">SEO Title (Google tab title)</label>
-                                        <input type="text" value={newProduct.seo_title || ''} onChange={e => setNewProduct({ ...newProduct, seo_title: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm font-medium" placeholder={`Buy ${newProduct.name || '...'} Online in Pakistan | Tarzify`} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">URL Slug (SEO-friendly URL)</label>
-                                        <input type="text" value={newProduct.slug || ''} onChange={e => setNewProduct({ ...newProduct, slug: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm font-mono text-primary" placeholder="e.g. wireless-bluetooth-headphones" />
-                                    </div>
-                                    <div className="col-span-2 space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Meta Description (max 160 chars — shown in Google search)</label>
-                                        <input type="text" maxLength={160} value={newProduct.meta_description || ''} onChange={e => setNewProduct({ ...newProduct, meta_description: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm" placeholder="Shop ... at Tarzify. Fast delivery across Pakistan. Cash on delivery available." />
-                                        <p className="text-[9px] opacity-30 text-right">{(newProduct.meta_description || '').length}/160</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Image Alt Text (for Google Images)</label>
-                                        <input type="text" value={newProduct.alt_text || ''} onChange={e => setNewProduct({ ...newProduct, alt_text: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm" placeholder={`${newProduct.name || '...'} - Buy Online at Tarzify Pakistan`} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Keywords / Tags (comma-separated)</label>
-                                        <input type="text" value={newProduct.tags || ''} onChange={e => setNewProduct({ ...newProduct, tags: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm" placeholder="e.g. buy online, tarzify, pakistan, fashion" />
-                                        {newProduct.tags && (
-                                            <div className="flex flex-wrap gap-2 pt-1">
-                                                {newProduct.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
-                                                    <span key={tag} className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-full">{tag}</span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button type="submit" disabled={isSubmitting} className="col-span-2 py-6 bg-primary text-white rounded-[2.5rem] font-black uppercase italic tracking-tighter text-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-                                {isSubmitting ? 'Creating...' : 'Publish Product'}
-                            </button>
-                        </form>
-                    </motion.div>
+                    <div className="max-w-4xl mx-auto">
+                        <UnifiedProductForm
+                            onClose={() => setActiveTab('inventory')}
+                            onSuccess={() => {
+                                setActiveTab('inventory');
+                                refetchProducts();
+                            }}
+                        />
+                    </div>
                 )}
 
-                {activeTab === 'edit-product' && editingProduct && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="max-w-4xl space-y-12"
-                    >
-                        <div className="flex items-center gap-6 mb-8">
-                            <button onClick={() => { setEditingProduct(null); setActiveTab('inventory'); }} className="p-4 bg-foreground/5 rounded-2xl hover:bg-foreground/10 transition-colors">
-                                <Plus className="w-6 h-6 rotate-45" />
-                            </button>
-                            <h2 className="text-2xl font-black italic uppercase tracking-tighter">Edit Product Details</h2>
-                        </div>
-
-                        <form onSubmit={handleUpdateProduct} className="grid grid-cols-1 md:grid-cols-2 gap-10 pb-20">
-                            <div className="col-span-2 space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Name</label>
-                                <input required type="text" value={editingProduct.name} onChange={e => handleNameChange(e.target.value, true)} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all text-xl font-bold" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">SKU</label>
-                                <input required type="text" value={editingProduct.sku} onChange={e => setEditingProduct({ ...editingProduct, sku: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all font-mono" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Price (Rs.)</label>
-                                <input required type="number" value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all font-black text-2xl" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Original Price</label>
-                                <input type="number" value={editingProduct.compare_at_price} onChange={e => setEditingProduct({ ...editingProduct, compare_at_price: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all opacity-30 font-black" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Stock</label>
-                                <input required type="number" min="0" value={editingProduct.stock} onChange={e => setEditingProduct({ ...editingProduct, stock: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all font-black" />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Category</label>
-                                <select value={editingProduct.category} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all cursor-pointer font-bold bg-background">
-                                    <option value="">Select Category</option>
-                                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="col-span-2 space-y-3">
-                                <label className="text-xs font-black uppercase tracking-widest opacity-30">Description</label>
-                                <textarea value={editingProduct.description} onChange={e => setEditingProduct({ ...editingProduct, description: e.target.value })} className="w-full glass border-none rounded-3xl p-6 min-h-[150px] outline-none transition-all" />
-                            </div>
-                            <div className="col-span-2 flex items-center gap-4 p-6 glass rounded-3xl">
-                                <input type="checkbox" checked={editingProduct.is_returnable} onChange={e => setEditingProduct({ ...editingProduct, is_returnable: e.target.checked })} className="w-6 h-6 rounded-lg accent-primary" />
-                                <label className="text-lg font-black italic uppercase tracking-tighter">Allow Returns</label>
-                            </div>
-
-                            <div className="col-span-2 space-y-6 pt-10 border-t border-white/5">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-2xl font-black italic uppercase tracking-tighter">Product Photos</h3>
-                                    <p className="text-xs font-bold opacity-30 uppercase">{(editingProduct.image_urls || []).length} Photos</p>
-                                </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    <div
-                                        onClick={() => handleImageUpload(true)}
-                                        className={`flex flex-col items-center justify-center aspect-square border-2 border-dashed border-foreground/10 rounded-[2.5rem] cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-all ${uploading ? 'opacity-50' : ''}`}
-                                    >
-                                        <Plus className="w-10 h-10 text-primary opacity-50" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest mt-3 opacity-30">Add More</span>
-                                    </div>
-
-                                    {(editingProduct.image_urls || []).map((url: string, idx: number) => (
-                                        <div key={idx} className="aspect-square rounded-[2.5rem] overflow-hidden relative group border border-foreground/5 bg-foreground/5 flex items-center justify-center">
-                                            {url && <img src={url} alt="Preview" className="w-full h-full object-cover" />}
-                                            <button type="button" onClick={() => removeImage(idx, true)} className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform"><X className="w-4 h-4" /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="col-span-2 space-y-4">
-                                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Add External URL</label>
-                                <input
-                                    type="text"
-                                    placeholder="Paste image URL..."
-                                    value={editUrlInput}
-                                    onChange={e => { setEditUrlInput(e.target.value); setUrlError(false); }}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            if (editUrlInput && !urlError) {
-                                                setEditingProduct(prev => prev ? ({ ...prev, image_urls: [...(prev.image_urls || []), editUrlInput] }) : null);
-                                                setEditUrlInput('');
-                                            }
-                                        }
+                {activeTab.startsWith('edit-product-') && (
+                    <div className="max-w-4xl mx-auto">
+                        {(() => {
+                            const productId = parseInt(activeTab.split('-')[2]);
+                            return (
+                                <UnifiedProductForm
+                                    productId={productId}
+                                    onClose={() => setActiveTab('inventory')}
+                                    onSuccess={() => {
+                                        setActiveTab('inventory');
+                                        refetchProducts();
                                     }}
-                                    className={`w-full bg-gray-50 border-2 ${urlError ? 'border-red-500' : 'border-transparent focus:border-primary'} rounded-3xl p-5 outline-none transition-all text-black`}
                                 />
-                            </div>
-
-                            <button type="submit" disabled={isSubmitting} className="col-span-2 py-6 bg-primary text-white rounded-[2.5rem] font-black uppercase italic tracking-tighter text-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
-                                {isSubmitting ? 'Updating...' : 'Update Product Details'}
-                            </button>
-                        </form>
-                    </motion.div>
+                            );
+                        })()}
+                    </div>
                 )}
 
                 {activeTab === 'orders' && (

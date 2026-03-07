@@ -77,3 +77,89 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media print {
+
+  /* 1. COMPLETELY HIDE the main app container */
+  #root,
+  .no-print,
+  header,
+  footer,
+  nav,
+  SEO {
+    display: none !important;
+  }
+
+  /* 2. Style the Body for a single clean page */
+  html,
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 3. The Portaled Modal - Ensure it is the ONLY thing visible */
+  .receipt-modal-portal {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: visible !important;
+    z-index: 99999 !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Reset all visibility for children of the portal */
+  .receipt-modal-portal * {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    display: block;
+    /* We'll fix flex/grid below */
+  }
+
+  /* Flex/Grid Restoration */
+  .receipt-modal-portal .flex {
+    display: flex !important;
+  }
+
+  .receipt-modal-portal .grid {
+    display: grid !important;
+  }
+
+  .receipt-modal-portal .inline-flex {
+    display: inline-flex !important;
+  }
+
+  /* 4. Receipt Content Area Tweak */
+  #receipt-print-area {
+    margin: 0 auto !important;
+    border: 1pt solid #eee !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  /* Hide close/print buttons during actual print */
+  button,
+  .X,
+  .Printer {
+    display: none !important;
+  }
+
+  /* Global Print Refinement */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
