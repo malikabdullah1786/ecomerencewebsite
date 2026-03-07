@@ -101,6 +101,17 @@ function App() {
         }
     }, [searchQuery]);
 
+    // Handle Review Success from Email
+    useEffect(() => {
+        if (window.location.href.includes('review=success')) {
+            useToastStore.getState().show('Thank you for your review! 🌟', 'success');
+            // Clean up the URL
+            const url = new URL(window.location.href);
+            url.searchParams.delete('review');
+            window.history.replaceState({}, '', url.toString());
+        }
+    }, []);
+
     useEffect(() => {
         const lenis = new Lenis({
             duration: 0.8,

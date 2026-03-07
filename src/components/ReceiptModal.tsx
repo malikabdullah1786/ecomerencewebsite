@@ -155,18 +155,23 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                                                 {item.quantity}x
                                             </div>
                                             <div>
-                                                <p className="font-black text-sm">{item.products?.name || 'Product'}</p>
+                                                <p className="font-black text-sm">{item.name || item.products?.name || 'Product'}</p>
                                                 <div className="flex flex-col gap-0.5">
                                                     <p className="text-[10px] opacity-30 tracking-widest font-bold uppercase">{item.products?.sku || 'PREMIUM-ITEM'}</p>
-                                                    {item.variant_combo && Object.entries(item.variant_combo).length > 0 && (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {Object.entries(item.variant_combo as Record<string, string>).map(([k, v]) => (
-                                                                <span key={k} className="text-[9px] font-black uppercase text-primary">
-                                                                    {k}: {String(v)}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    {(() => {
+                                                        const combo = item.variant_combo || item.combination || {};
+                                                        const variants = Object.entries(combo);
+                                                        if (variants.length === 0) return null;
+                                                        return (
+                                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                                {variants.map(([k, v]) => (
+                                                                    <span key={k} className="text-[9px] font-black uppercase text-primary bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                                                                        {k}: {String(v)}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>

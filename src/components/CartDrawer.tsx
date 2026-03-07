@@ -58,6 +58,15 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                         </div>
                                         <div className="flex-grow">
                                             <h3 className="font-bold text-sm mb-1">{item.name}</h3>
+                                            {item.variant_combo && Object.entries(item.variant_combo).length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mb-2">
+                                                    {Object.entries(item.variant_combo).map(([k, v]) => (
+                                                        <span key={k} className="text-[10px] font-black uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                                            {k}: {String(v)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <p className="text-xs opacity-50 mb-2">Quantity: {item.quantity}</p>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3 bg-foreground/5 rounded-lg p-1">
@@ -65,7 +74,7 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             if (item.quantity > 1) {
-                                                                useCartStore.getState().updateQuantity(item.id, -1);
+                                                                useCartStore.getState().updateQuantity(item.id, -1, item.variant_combo);
                                                             }
                                                         }}
                                                         disabled={item.quantity <= 1}
@@ -77,7 +86,7 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            useCartStore.getState().updateQuantity(item.id, 1);
+                                                            useCartStore.getState().updateQuantity(item.id, 1, item.variant_combo);
                                                         }}
                                                         className="w-6 h-6 flex items-center justify-center hover:bg-white rounded-md transition-colors font-bold"
                                                     >
@@ -97,7 +106,7 @@ export const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                removeItem(item.id);
+                                                                removeItem(item.id, item.variant_combo);
                                                             }}
                                                             className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                                                             title="Remove item"

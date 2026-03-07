@@ -1,5 +1,6 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 import { supabase } from '../lib/supabase';
 
 const router = express.Router();
@@ -138,7 +139,7 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
 
                             <!-- Track Button -->
                             <div style="margin-top: 50px; text-align: center;">
-                                <a href="https://tarzify.com/#track-order" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 20px 45px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(248, 86, 6, 0.3);">Track My Order Now</a>
+                                <a href="https://tarzify.com/#track-order?id=${order.order_number}" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 20px 45px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(248, 86, 6, 0.3);">Track My Order Now</a>
                             </div>
 
                         </div>
@@ -163,6 +164,88 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
         console.log('Order email sent successfully via Hostinger SMTP.');
     } catch (error) {
         console.error('Nodemailer error:', error);
+    }
+};
+
+const sendMerchantOrderEmail = async (merchantEmail: string, order: any, merchantItems: any, customerName: string, shippingAddress: string, phone: string) => {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return;
+
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+        port: Number(process.env.SMTP_PORT) || 465,
+        secure: true,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+
+    const itemsRows = merchantItems.map((item: any) => {
+        const variants = item.variant_combo && Object.entries(item.variant_combo).length > 0
+            ? Object.entries(item.variant_combo).map(([k, v]) => `${k}: ${v}`).join(' | ')
+            : '';
+
+        return `
+            <tr>
+                <td style="padding: 15px 15px 15px 0; border-bottom: 1px solid #eeeeee; width: 60px;">
+                    <img src="${item.image || 'https://via.placeholder.com/60'}" width="60" height="60" style="border-radius: 8px; object-fit: cover;" alt="${item.name}">
+                </td>
+                <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee;">
+                    <div style="font-weight: 700; color: #212121; font-size: 14px; margin-bottom: 4px;">${item.name}</div>
+                    ${variants ? `<div style="color: #f85606; font-size: 11px; font-weight: 700; text-transform: uppercase;">${variants}</div>` : ''}
+                    <div style="color: #757575; font-size: 12px; margin-top: 4px;">Quantity: ${item.quantity}</div>
+                </td>
+                <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 700; color: #f85606; vertical-align: top;">
+                    Rs. ${(item.price * item.quantity).toLocaleString()}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || `"TARZIFY Seller" <${process.env.SMTP_USER}>`,
+            to: merchantEmail,
+            subject: `New Order Received: #${order.order_number}`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f4f4f6; color: #212121;">
+                    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden;">
+                        <div style="height: 6px; background-color: #f85606;"></div>
+                        <div style="padding: 30px 40px; text-align: center; border-bottom: 1px solid #eeeeee;">
+                            <h1 style="margin: 0; color: #f85606; font-size: 28px; font-weight: 900; font-style: italic;">TARZIFY SELLER</h1>
+                        </div>
+                        <div style="padding: 40px;">
+                            <h2 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 900;">New Sale!</h2>
+                            <p style="font-size: 16px; color: #424242;">Congratulations! You just received a new order from <strong>${customerName}</strong>.</p>
+                            
+                            <div style="margin: 30px 0; padding: 20px; background-color: #f9f9f9; border-radius: 12px; border: 1px solid #eeeeee;">
+                                <h3 style="margin: 0 0 10px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #757575;">Order Details</h3>
+                                <p style="margin: 0; font-size: 16px; font-weight: 900; color: #f85606;">#${order.order_number}</p>
+                                <p style="margin: 10px 0 0 0; font-size: 14px;"><strong>Customer Phone:</strong> ${phone}</p>
+                                <p style="margin: 5px 0 0 0; font-size: 14px;"><strong>Shipping Address:</strong><br>${shippingAddress}</p>
+                            </div>
+
+                            <table style="width: 100%; border-collapse: collapse;">
+                                ${itemsRows}
+                            </table>
+
+                            <div style="margin-top: 40px; text-align: center;">
+                                <a href="https://tarzify.com/merchant" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 15px 35px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase;">Go to Dashboard</a>
+                            </div>
+                        </div>
+                        <div style="background-color: #1a1a1a; padding: 20px; text-align: center; color: #ffffff; font-size: 10px; opacity: 0.6;">
+                            <p>&copy; 2026 TARZIFY. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        });
+        console.log(`Merchant notification sent to ${merchantEmail}`);
+    } catch (error) {
+        console.error('Error sending merchant notification email:', error);
     }
 };
 
@@ -205,6 +288,57 @@ const sendStatusUpdateEmail = async (email: string, order: any, status: string, 
         </div>
     ` : '';
 
+    let reviewHtml = '';
+    if (status === 'delivered') {
+        try {
+            const { data: items } = await supabase
+                .from('order_items')
+                .select('*, products(name)')
+                .eq('order_id', order.id);
+
+            if (items && items.length > 0) {
+                const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'tarzify-review-secret';
+                // Production backend URL
+                const baseUrl = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://backend.tarzify.com/api' : 'http://localhost:5000/api');
+
+                const itemsList = items.map((item: any) => {
+                    const stars = [1, 2, 3, 4, 5].map(star => {
+                        const sig = crypto.createHmac('sha256', secret)
+                            .update(`${order.id}:${item.product_id}:${order.user_id}:${star}`)
+                            .digest('hex')
+                            .substring(0, 16);
+
+                        const rateUrl = `${baseUrl}/orders/rate-item?order_id=${order.id}&product_id=${item.product_id}&user_id=${order.user_id}&rating=${star}&sig=${sig}`;
+                        return `<a href="${rateUrl}" style="text-decoration: none; font-size: 24px; color: #ffc107;">★</a>`;
+                    }).join(' ');
+
+                    const combo = item.variant_combo || item.combination || {};
+                    const variantsStr = Object.entries(combo).length > 0
+                        ? ' [' + Object.entries(combo).map(([k, v]) => `${k}: ${v}`).join(', ') + ']'
+                        : '';
+
+                    return `
+                        <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #eeeeee; border-radius: 12px;">
+                            <p style="margin: 0 0 10px 0; font-weight: 700; font-size: 14px; text-align: left;">${item.products?.name || 'Product'}${variantsStr}</p>
+                            <div style="letter-spacing: 5px; text-align: left;">${stars}</div>
+                            <p style="margin: 5px 0 0 0; font-size: 10px; color: #757575; text-align: left;">Click a star to rate instantly</p>
+                        </div>
+                    `;
+                }).join('');
+
+                reviewHtml = `
+                    <div style="margin-top: 40px; border-top: 2px solid #f85606; padding-top: 30px; text-align: center;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 900; text-transform: uppercase;">Rate Your Experience</h3>
+                        <p style="margin: 0 0 25px 0; font-size: 14px; color: #424242;">How did you like your items? Your feedback helps us improve!</p>
+                        ${itemsList}
+                    </div>
+                `;
+            }
+        } catch (err) {
+            console.error('Error fetching items for review email:', err);
+        }
+    }
+
     try {
         await transporter.sendMail({
             from: process.env.SMTP_FROM || `"TARZIFY" <${process.env.SMTP_USER}>`,
@@ -229,6 +363,7 @@ const sendStatusUpdateEmail = async (email: string, order: any, status: string, 
                             </div>
 
                             ${trackingHtml}
+                            ${reviewHtml}
 
                             <div style="margin-top: 40px; text-align: center;">
                                 <a href="https://tarzify.com/#track-order?id=${order.order_number}" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 15px 35px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase;">Track Your Order</a>
@@ -268,17 +403,41 @@ router.post('/create', async (req, res) => {
     };
 
     try {
-        // 1. Verify Stock for all items first
+        // 1. Verify Stock for all items first (Global and Variant-Specific)
+        const merchantMap: Record<string, string> = {};
         for (const item of items) {
             const { data: product, error: stockErr } = await supabase
                 .from('products')
-                .select('stock, name')
+                .select('stock, name, pricing_matrix, merchant_id')
                 .eq('id', item.id)
                 .single();
 
             if (stockErr || !product) throw new Error(`Product ${item.id} not found`);
-            if (product.stock < item.quantity) {
-                throw new Error(`Insufficient stock for "${product.name}". Only ${product.stock} left.`);
+            if (product.merchant_id) merchantMap[item.id] = product.merchant_id;
+
+            // Check specific variant stock if variant_combo exists
+            if (item.variant_combo && product.pricing_matrix && Array.isArray(product.pricing_matrix)) {
+                const variant = product.pricing_matrix.find((v: any) =>
+                    JSON.stringify(v.variant_combo) === JSON.stringify(item.variant_combo)
+                );
+
+                if (variant) {
+                    if (variant.stock < item.quantity) {
+                        const variantStr = Object.entries(item.variant_combo).map(([k, v]) => `${k}: ${v}`).join(', ');
+                        throw new Error(`Insufficient stock for "${product.name}" [${variantStr}]. Only ${variant.stock} left.`);
+                    }
+                } else {
+                    // If variant not found in matrix, fall back to global stock or error?
+                    // Usually, if a product has a matrix, the variant MUST exist.
+                    if (product.stock < item.quantity) {
+                        throw new Error(`Insufficient stock for "${product.name}". Only ${product.stock} left.`);
+                    }
+                }
+            } else {
+                // Global stock check
+                if (product.stock < item.quantity) {
+                    throw new Error(`Insufficient stock for "${product.name}". Only ${product.stock} left.`);
+                }
             }
         }
 
@@ -319,7 +478,8 @@ router.post('/create', async (req, res) => {
             order_id: order.id,
             product_id: item.id,
             quantity: item.quantity,
-            price: item.price
+            price: item.price,
+            variant_combo: item.variant_combo || {}
         }));
 
         const { error: itemsError } = await supabase
@@ -342,6 +502,41 @@ router.post('/create', async (req, res) => {
             await sendOrderEmail(finalEmail, order, items, subtotal, shippingCost, total, shippingAddress);
         } else {
             console.warn('No email found for order notification. Skipping.');
+        }
+
+        // 2.5 Notify Merchants
+        try {
+            // Group items by merchant
+            const merchantGroups: Record<string, any[]> = {};
+            for (const item of items) {
+                const merchantId = merchantMap[item.id];
+                if (merchantId) {
+                    if (!merchantGroups[merchantId]) merchantGroups[merchantId] = [];
+                    merchantGroups[merchantId].push(item);
+                }
+            }
+
+            // Send email to each merchant
+            for (const [merchantId, merchantItems] of Object.entries(merchantGroups)) {
+                const { data: merchantProfile } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('id', merchantId)
+                    .single();
+
+                if (merchantProfile?.email) {
+                    await sendMerchantOrderEmail(
+                        merchantProfile.email,
+                        order,
+                        merchantItems,
+                        customerName,
+                        shippingAddress,
+                        phone
+                    );
+                }
+            }
+        } catch (mErr) {
+            console.error('Error in merchant notification flow:', mErr);
         }
 
         // 3. Decrement stock
@@ -425,6 +620,62 @@ router.patch('/assign-tracking/:id', async (req, res) => {
         res.json({ success: true });
     } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
+    }
+});
+
+// Direct Review Submission from Email
+router.get('/rate-item', async (req, res) => {
+    const { order_id, product_id, user_id, rating, sig } = req.query;
+
+    if (!order_id || !product_id || !user_id || !rating || !sig) {
+        return res.status(400).send('Invalid rating link.');
+    }
+
+    try {
+        // 1. Verify Signature
+        const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'tarzify-review-secret';
+        const expectedSig = crypto.createHmac('sha256', secret)
+            .update(`${order_id}:${product_id}:${user_id}:${rating}`)
+            .digest('hex')
+            .substring(0, 16);
+
+        if (sig !== expectedSig) {
+            return res.status(403).send('Invalid or expired rating link.');
+        }
+
+        // 2. Insert/Upsert Review
+        const { error } = await supabase
+            .from('reviews')
+            .upsert({
+                product_id: Number(product_id),
+                user_id: String(user_id),
+                rating: Number(rating),
+                comment: 'Rated via Email',
+                created_at: new Date().toISOString()
+            }, {
+                onConflict: 'product_id,user_id'
+            });
+
+        if (error) throw error;
+
+        // 3. Redirect to Product Page with success flag
+        // Fetch product info for the slug
+        const { data: product } = await supabase
+            .from('products')
+            .select('name, sku')
+            .eq('id', product_id)
+            .single();
+
+        const baseUrl = process.env.FRONTEND_URL || 'https://tarzify.com';
+        if (product) {
+            const productSlug = `${product.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${product.sku.toLowerCase()}`;
+            return res.redirect(`${baseUrl}/#product/${productSlug}?review=success`);
+        }
+
+        res.redirect(`${baseUrl}/?review=success`);
+    } catch (error: any) {
+        console.error('Review submission error:', error);
+        res.status(500).send('Error submitting review. Please try manually on the website.');
     }
 });
 

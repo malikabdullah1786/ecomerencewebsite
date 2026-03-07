@@ -448,15 +448,23 @@ export const MerchantDashboard = () => {
                                         <span className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-full">{order.status}</span>
                                     </div>
                                     <p className="text-sm opacity-50 font-medium">#{order.order_number || order.id} • {new Date(order.created_at).toLocaleDateString()}</p>
-                                    <div className="mt-2 space-y-1">
+                                    <div className="mt-2 space-y-1.5">
                                         {order.order_items?.map((item: any, i: number) => {
-                                            const variants = item.variant_combo && Object.entries(item.variant_combo).length > 0
-                                                ? Object.entries(item.variant_combo).map(([k, v]) => `${k}: ${v}`).join(', ')
+                                            const combo = item.variant_combo || item.combination || {};
+                                            const variants = Object.entries(combo).length > 0
+                                                ? Object.entries(combo).map(([k, v]) => `${k}: ${v}`).join(', ')
                                                 : null;
                                             return (
-                                                <div key={i} className="text-xs font-medium opacity-70">
-                                                    {item.quantity}x {item.products?.name}
-                                                    {variants && <span className="ml-2 text-primary font-bold">[{variants}]</span>}
+                                                <div key={i} className="flex flex-col">
+                                                    <div className="text-sm font-black opacity-80 flex items-center gap-2">
+                                                        <span className="w-5 h-5 flex items-center justify-center bg-foreground/5 rounded-md text-[10px]">{item.quantity}x</span>
+                                                        {item.name || item.products?.name}
+                                                    </div>
+                                                    {variants && (
+                                                        <div className="ml-7 text-[10px] font-black uppercase text-primary tracking-wider mt-0.5">
+                                                            {variants}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}

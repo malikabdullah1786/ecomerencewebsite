@@ -23,7 +23,7 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
 
             const { data, error } = await supabase
                 .from('orders')
-                .select('order_number, status, total_amount, tracking_number, courier_name, shipping_proof_url')
+                .select('*, order_items(*, products(*))')
                 .eq('order_number', id)
                 .single();
 
@@ -144,6 +144,44 @@ export const TrackOrder = ({ onClose, initialOrderId }: { onClose: () => void, i
                                         </div>
                                     );
                                 })}
+                            </div>
+
+                            {/* Items List (NEW) */}
+                            <div className="space-y-4 pt-8 border-t border-white/5">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40">ORDER ITEMS</h4>
+                                <div className="space-y-3">
+                                    {status.order_items?.map((item: any) => (
+                                        <div key={item.id} className="flex justify-between items-center group bg-white/5 p-4 rounded-3xl border border-white/5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-black text-xs">
+                                                    {item.quantity}x
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-sm">{item.products?.name || 'Product'}</p>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        {(() => {
+                                                            const combo = item.variant_combo || item.combination || {};
+                                                            const variants = Object.entries(combo);
+                                                            if (variants.length === 0) {
+                                                                return <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Standard Edition</span>;
+                                                            }
+                                                            return (
+                                                                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                                                                    {variants.map(([k, v]) => (
+                                                                        <span key={k} className="text-[9px] font-black uppercase text-primary">
+                                                                            {k}: {String(v)}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p className="font-black tracking-tighter text-sm italic opacity-50">Rs. {(item.price * item.quantity).toLocaleString()}</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             {status.tracking_number && (

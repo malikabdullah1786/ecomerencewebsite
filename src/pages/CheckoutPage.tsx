@@ -59,6 +59,16 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
         fetchRates();
     }, []);
 
+    // Auto-redirect to tracking after 5 seconds
+    useEffect(() => {
+        if (orderComplete && createdOrderId) {
+            const timer = setTimeout(() => {
+                window.location.hash = `#track-order?id=${createdOrderId}`;
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [orderComplete, createdOrderId]);
+
     const selectedRate = shippingRates.find(r => r.id === formData.shippingMethod) || shippingRates[0];
     const shippingCost = selectedRate ? selectedRate.price : 0;
     const finalTotal = total + shippingCost;
@@ -103,7 +113,14 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: user.id,
-                    items: items.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price, image: item.image })),
+                    items: items.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        image: item.image,
+                        variant_combo: item.variant_combo
+                    })),
                     total: finalTotal,
                     shippingAddress: `${formData.address}, ${formData.city}`,
                     phone: formData.phone,
@@ -182,12 +199,21 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         </div>
                     )}
 
-                    <button
-                        onClick={() => window.location.hash = ''}
-                        className="bg-primary hover:bg-primary/90 text-white font-black px-12 py-5 rounded-2xl hover:scale-105 transition-all shadow-xl shadow-primary/20"
-                    >
-                        Continue Shopping
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                        <button
+                            onClick={() => window.location.hash = `#track-order?id=${createdOrderId}`}
+                            className="bg-primary hover:bg-primary/90 text-white font-black px-12 py-5 rounded-2xl hover:scale-105 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                        >
+                            <Truck className="w-5 h-5" />
+                            Track My Order
+                        </button>
+                        <button
+                            onClick={() => window.location.hash = ''}
+                            className="bg-white/5 hover:bg-white/10 text-white font-black px-12 py-5 rounded-2xl transition-all border border-white/10"
+                        >
+                            Continue Shopping
+                        </button>
+                    </div>
                 </motion.div>
             </div>
         );
