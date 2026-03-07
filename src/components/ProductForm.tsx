@@ -233,10 +233,14 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
     const handleRemoveAttribute = (attrName: string) => {
         const newAttrs = { ...formData.dynamic_attributes };
         delete newAttrs[attrName];
+        const newMatrix = generatePricingMatrix(newAttrs);
+        const totalStock = newMatrix.reduce((sum, row) => sum + (parseInt(row.stock) || 0), 0).toString();
+
         setFormData(prev => ({
             ...prev,
             dynamic_attributes: newAttrs,
-            pricing_matrix: generatePricingMatrix(newAttrs)
+            pricing_matrix: newMatrix,
+            stock: newMatrix.length > 0 ? totalStock : prev.stock
         }));
     };
 
@@ -258,17 +262,32 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
             ...formData.dynamic_attributes,
             [attrName]: formData.dynamic_attributes[attrName].filter((_, i) => i !== optionIndex)
         };
+        const newMatrix = generatePricingMatrix(newAttrs);
+        const totalStock = newMatrix.reduce((sum, row) => sum + (parseInt(row.stock) || 0), 0).toString();
+
         setFormData(prev => ({
             ...prev,
             dynamic_attributes: newAttrs,
-            pricing_matrix: generatePricingMatrix(newAttrs)
+            pricing_matrix: newMatrix,
+            stock: newMatrix.length > 0 ? totalStock : prev.stock
         }));
     };
 
     const updateMatrixRow = (index: number, field: string, value: string) => {
         const newMatrix = [...formData.pricing_matrix];
         newMatrix[index] = { ...newMatrix[index], [field]: value };
-        setFormData(prev => ({ ...prev, pricing_matrix: newMatrix }));
+
+        // Auto-calculate total stock if updating a stock field in matrix
+        let totalStock = formData.stock;
+        if (field === 'stock') {
+            totalStock = newMatrix.reduce((sum, row) => sum + (parseInt(row.stock) || 0), 0).toString();
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            pricing_matrix: newMatrix,
+            stock: field === 'stock' ? totalStock : prev.stock
+        }));
     };
 
     const handleUploadVariantImage = (index: number) => {
@@ -501,9 +520,13 @@ export const ProductForm = ({ productId, onClose, onSuccess }: ProductFormProps)
                                         type="number"
                                         value={formData.stock}
                                         onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                                        className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none focus:border-primary/50 transition-colors font-bold mt-2"
+                                        readOnly={formData.pricing_matrix.length > 0}
+                                        className={`w-full bg-white/[0.03] border border-white/5 rounded-2xl p-4 outline-none transition-colors font-bold mt-2 ${formData.pricing_matrix.length > 0 ? 'opacity-50 cursor-not-allowed' : 'focus:border-primary/50'}`}
                                         placeholder="0"
                                     />
+                                    {formData.pricing_matrix.length > 0 && (
+                                        <p className="text-[8px] font-black text-primary uppercase mt-1 px-1">Managed via Matrix</p>
+                                    )}
                                 </div>
                             </div>
 

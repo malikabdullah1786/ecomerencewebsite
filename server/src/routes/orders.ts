@@ -21,20 +21,27 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
         }
     });
 
-    const itemsRows = items.map((item: any) => `
-        <tr>
-            <td style="padding: 15px 15px 15px 0; border-bottom: 1px solid #eeeeee; width: 60px;">
-                <img src="${item.image || 'https://via.placeholder.com/60'}" width="60" height="60" style="border-radius: 8px; block-size: 60px; object-fit: cover;" alt="${item.name}">
-            </td>
-            <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee;">
-                <div style="font-weight: 700; color: #212121; font-size: 14px; margin-bottom: 4px;">${item.name}</div>
-                <div style="color: #757575; font-size: 12px;">Qty: ${item.quantity} | Rs. ${item.price.toLocaleString()} each</div>
-            </td>
-            <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 700; color: #212121; vertical-align: top;">
-                Rs. ${(item.price * item.quantity).toLocaleString()}
-            </td>
-        </tr>
-    `).join('');
+    const itemsRows = items.map((item: any) => {
+        const variants = item.variant_combo && Object.entries(item.variant_combo).length > 0
+            ? Object.entries(item.variant_combo).map(([k, v]) => `${k}: ${v}`).join(' | ')
+            : '';
+
+        return `
+            <tr>
+                <td style="padding: 15px 15px 15px 0; border-bottom: 1px solid #eeeeee; width: 60px;">
+                    <img src="${item.image || 'https://via.placeholder.com/60'}" width="60" height="60" style="border-radius: 8px; block-size: 60px; object-fit: cover;" alt="${item.name}">
+                </td>
+                <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee;">
+                    <div style="font-weight: 700; color: #212121; font-size: 14px; margin-bottom: 4px;">${item.name}</div>
+                    ${variants ? `<div style="color: #f85606; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">${variants}</div>` : ''}
+                    <div style="color: #757575; font-size: 12px;">Qty: ${item.quantity} | Rs. ${item.price.toLocaleString()} each</div>
+                </td>
+                <td style="padding: 15px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 700; color: #212121; vertical-align: top;">
+                    Rs. ${(item.price * item.quantity).toLocaleString()}
+                </td>
+            </tr>
+        `;
+    }).join('');
 
     try {
         await transporter.sendMail({
@@ -159,6 +166,88 @@ const sendOrderEmail = async (email: string, order: any, items: any, subtotal: n
     }
 };
 
+const sendStatusUpdateEmail = async (email: string, order: any, status: string, trackingData?: any) => {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.warn('SMTP credentials missing, skipping status update email.');
+        return;
+    }
+
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+        port: Number(process.env.SMTP_PORT) || 465,
+        secure: true,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+
+    const statusColors: Record<string, string> = {
+        pending: '#f85606',
+        shipped: '#2196f3',
+        delivered: '#4caf50',
+        cancelled: '#f44336'
+    };
+
+    const statusMessages: Record<string, string> = {
+        shipped: 'Great news! Your package is on its way.',
+        delivered: 'Hooray! Your order has been delivered.',
+        pending: 'We are processing your order.',
+        cancelled: 'Your order has been cancelled.'
+    };
+
+    const trackingHtml = trackingData?.tracking_number ? `
+        <div style="margin: 30px 0; padding: 25px; background-color: #f9f9f9; border-radius: 12px; border: 1px solid #eeeeee;">
+            <h3 style="margin: 0 0 15px 0; font-size: 11px; color: #424242; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Tracking Information</h3>
+            <p style="margin: 0 0 5px 0; font-size: 14px; color: #212121; font-weight: 700;">Courier: ${trackingData.courier_name}</p>
+            <p style="margin: 0; font-size: 16px; color: #f85606; font-weight: 900;">CN: ${trackingData.tracking_number}</p>
+            ${trackingData.shipping_proof_url ? `<div style="margin-top: 15px;"><img src="${trackingData.shipping_proof_url}" style="width: 100%; max-width: 200px; border-radius: 8px;" alt="Shipping Proof"></div>` : ''}
+        </div>
+    ` : '';
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || `"TARZIFY" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: `Order Update #${order.order_number}: ${status.toUpperCase()}`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f4f4f6; color: #212121;">
+                    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
+                        <div style="height: 6px; background-color: ${statusColors[status] || '#f85606'};"></div>
+                        <div style="padding: 30px 40px; text-align: center; border-bottom: 1px solid #eeeeee;">
+                            <h1 style="margin: 0; color: #f85606; font-size: 32px; font-weight: 900; font-style: italic;">TARZIFY</h1>
+                        </div>
+                        <div style="padding: 40px;">
+                            <h2 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 900;">Order Update</h2>
+                            <p style="font-size: 16px; color: #424242;">${statusMessages[status] || 'Your order status has changed.'}</p>
+                            
+                            <div style="margin: 20px 0; font-size: 14px; font-weight: 700; color: #757575;">
+                                Order Number: <span style="color: #f85606;">#${order.order_number}</span><br>
+                                New Status: <span style="color: ${statusColors[status] || '#f85606'}; text-transform: uppercase;">${status}</span>
+                            </div>
+
+                            ${trackingHtml}
+
+                            <div style="margin-top: 40px; text-align: center;">
+                                <a href="https://tarzify.com/#track-order?id=${order.order_number}" style="display: inline-block; background-color: #f85606; color: #ffffff; padding: 15px 35px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase;">Track Your Order</a>
+                            </div>
+                        </div>
+                        <div style="background-color: #1a1a1a; padding: 30px; text-align: center; color: #ffffff; font-size: 12px; opacity: 0.6;">
+                            <p>&copy; 2026 TARZIFY. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        });
+        console.log(`Status update email (${status}) sent to ${email}`);
+    } catch (error) {
+        console.error('Error sending status email:', error);
+    }
+};
+
 router.post('/create', async (req, res) => {
     const { userId, items, total, shippingAddress, phone, paymentMethod, customerName } = req.body;
 
@@ -255,11 +344,14 @@ router.post('/create', async (req, res) => {
             console.warn('No email found for order notification. Skipping.');
         }
 
-        // 2. Reduce Stock (Now safer because we checked above)
+        // 3. Decrement stock
         for (const item of items) {
-            await supabase.rpc('decrement_stock', { product_id: item.id, amount: item.quantity });
+            await supabase.rpc('decrement_stock', {
+                product_id: parseInt(item.id),
+                amount: parseInt(item.quantity),
+                v_combo: item.variant_combo || null
+            });
         }
-
         res.json({ success: true, orderId: order.order_number });
     } catch (error: any) {
         console.error('Order creation error:', error);
@@ -272,12 +364,25 @@ router.patch('/status/:id', async (req, res) => {
     const { status } = req.body;
 
     try {
-        const { error } = await supabase
+        // 1. Update status
+        const { data: order, error } = await supabase
             .from('orders')
             .update({ status })
-            .eq('id', id);
+            .eq('id', id)
+            .select()
+            .single();
 
         if (error) throw error;
+
+        // 2. Fetch user email (orders table has customer_name, but we need email)
+        const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
+        const email = userData?.user?.email;
+
+        // 3. Send notification
+        if (email) {
+            await sendStatusUpdateEmail(email, order, status);
+        }
+
         res.json({ success: true });
     } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
@@ -289,7 +394,8 @@ router.patch('/assign-tracking/:id', async (req, res) => {
     const { tracking_number, courier_name, shipping_proof_url } = req.body;
 
     try {
-        const { error } = await supabase
+        // 1. Update status and tracking
+        const { data: order, error } = await supabase
             .from('orders')
             .update({
                 tracking_number,
@@ -297,9 +403,25 @@ router.patch('/assign-tracking/:id', async (req, res) => {
                 shipping_proof_url,
                 status: 'shipped' // Automatically move to shipped when tracking is assigned
             })
-            .eq('id', id);
+            .eq('id', id)
+            .select()
+            .single();
 
         if (error) throw error;
+
+        // 2. Fetch user email
+        const { data: userData } = await supabase.auth.admin.getUserById(order.user_id);
+        const email = userData?.user?.email;
+
+        // 3. Send notification with tracking info
+        if (email) {
+            await sendStatusUpdateEmail(email, order, 'shipped', {
+                tracking_number,
+                courier_name,
+                shipping_proof_url
+            });
+        }
+
         res.json({ success: true });
     } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });

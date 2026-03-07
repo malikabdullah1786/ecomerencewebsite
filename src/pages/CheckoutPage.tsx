@@ -433,7 +433,6 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                                 <>
                                     {currentStep === STEPS.length - 1 ? (formData.paymentMethod === 'fastpay' ? 'Pay Securely' : 'Place Order') : 'Continue to ' + STEPS[currentStep + 1]}
-                                    <ChevronRight className="w-5 h-5" />
                                 </>
                             )}
                         </button>
@@ -446,14 +445,23 @@ export const CheckoutPage = ({ onBack }: { onBack: () => void }) => {
                         <h3 className="text-xl font-black uppercase tracking-tighter">Summary</h3>
 
                         <div className="space-y-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-                            {items.map(item => (
-                                <div key={item.id} className="flex gap-4">
+                            {items.map((item, idx) => (
+                                <div key={`${item.id}-${idx}`} className="flex gap-4">
                                     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-foreground/5 flex-shrink-0">
                                         {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
                                     </div>
                                     <div className="flex-grow min-w-0">
                                         <p className="font-bold text-sm truncate">{item.name}</p>
                                         <p className="text-xs opacity-50">{item.quantity} × Rs. {item.price.toLocaleString()}</p>
+                                        {item.variant_combo && Object.entries(item.variant_combo as Record<string, string>).length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {Object.entries(item.variant_combo as Record<string, string>).map(([k, v]) => (
+                                                    <span key={k} className="text-[8px] font-black uppercase bg-foreground/5 px-2 py-0.5 rounded-full opacity-60">
+                                                        {k}: {String(v)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="font-black text-sm whitespace-nowrap">Rs. {(item.price * item.quantity).toLocaleString()}</p>
                                 </div>

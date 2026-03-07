@@ -684,7 +684,7 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                                 onClick={(e) => {
                                     if (displayStock === 0) return;
                                     // Make sure we pass the correct price to the cart based on variants
-                                    addItem({ ...product, price: displayPrice }, quantity);
+                                    addItem({ ...product, price: displayPrice }, quantity, selectedVariants);
                                     onFly(e);
                                 }}
                                 disabled={displayStock === 0}

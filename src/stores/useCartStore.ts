@@ -12,13 +12,14 @@ interface CartItem {
     image: string;
     quantity: number;
     stock: number; // Current available stock
+    variant_combo?: Record<string, string>;
 }
 
 interface CartState {
     items: CartItem[];
-    addItem: (product: any, quantity?: number) => void;
-    removeItem: (id: number) => void;
-    updateQuantity: (id: number, change: number) => void;
+    addItem: (product: any, quantity?: number, variant_combo?: Record<string, string>) => void;
+    removeItem: (id: number, variant_combo?: Record<string, string>) => void;
+    updateQuantity: (id: number, change: number, variant_combo?: Record<string, string>) => void;
     clearCart: () => void;
     setItems: (items: CartItem[]) => void;
     syncWithProducts: (availableProductIds: number[]) => void;
@@ -29,9 +30,15 @@ export const useCartStore = create<CartState>()(
     persist(
         (set, get) => ({
             items: [],
-            addItem: (product, quantity = 1) => {
+            addItem: (product, quantity = 1, variant_combo) => {
                 const currentItems = get().items;
-                const existingItem = currentItems.find(item => item.id === product.id);
+
+                // Matches by ID AND Variant Combo
+                const existingItem = currentItems.find(item =>
+                    item.id === product.id &&
+                    JSON.stringify(item.variant_combo || {}) === JSON.stringify(variant_combo || {})
+                );
+
                 const availableStock = product.stock ?? 0;
 
                 if (availableStock <= 0) return;
@@ -43,7 +50,9 @@ export const useCartStore = create<CartState>()(
                         return;
                     }
                     newItems = currentItems.map(item =>
-                        item.id === product.id ? { ...item, quantity: totalRequested } : item
+                        (item.id === product.id && JSON.stringify(item.variant_combo || {}) === JSON.stringify(variant_combo || {}))
+                            ? { ...item, quantity: totalRequested }
+                            : item
                     );
                 } else {
                     if (quantity > availableStock) {
@@ -56,26 +65,33 @@ export const useCartStore = create<CartState>()(
                         image: itemImage,
                         compare_at_price: product.compare_at_price,
                         quantity: quantity,
-                        stock: availableStock
+                        stock: availableStock,
+                        variant_combo: variant_combo
                     }];
                 }
                 set({ items: newItems, total: newItems.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0) });
 
                 // Sync to DB if logged in
-                const user = (useAuthStore.getState() as any).user; // Simple way to check user without hook in store
+                const user = (useAuthStore.getState() as any).user;
                 if (user) {
-                    const item = newItems.find(i => i.id === product.id);
+                    const item = newItems.find(i =>
+                        i.id === product.id &&
+                        JSON.stringify(i.variant_combo || {}) === JSON.stringify(variant_combo || {})
+                    );
                     if (item) {
                         supabase.from('cart_items').upsert({
                             user_id: user.id,
                             product_id: item.id,
-                            quantity: item.quantity
-                        }, { onConflict: 'user_id,product_id' }).then();
+                            quantity: item.quantity,
+                            variant_combo: variant_combo || {}
+                        }, { onConflict: 'user_id,product_id,variant_combo' }).then();
                     }
                 }
             },
-            removeItem: (id) => {
-                const newItems = get().items.filter(item => item.id !== id);
+            removeItem: (id, variant_combo) => {
+                const newItems = get().items.filter(item =>
+                    !(item.id === id && JSON.stringify(item.variant_combo || {}) === JSON.stringify(variant_combo || {}))
+                );
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
 
                 // Sync to DB if logged in
@@ -85,12 +101,16 @@ export const useCartStore = create<CartState>()(
                         .delete()
                         .eq('user_id', user.id)
                         .eq('product_id', id)
+                        .eq('variant_combo', variant_combo || {})
                         .then();
                 }
             },
-            updateQuantity: (id, change) => {
+            updateQuantity: (id, change, variant_combo) => {
                 const currentItems = get().items;
-                const item = currentItems.find(i => i.id === id);
+                const item = currentItems.find(i =>
+                    i.id === id &&
+                    JSON.stringify(i.variant_combo || {}) === JSON.stringify(variant_combo || {})
+                );
                 if (!item) return;
 
                 const newQuantity = item.quantity + change;
@@ -102,7 +122,9 @@ export const useCartStore = create<CartState>()(
                 if (newQuantity < 1) return;
 
                 const newItems = currentItems.map(i =>
-                    i.id === id ? { ...i, quantity: newQuantity } : i
+                    (i.id === id && JSON.stringify(i.variant_combo || {}) === JSON.stringify(variant_combo || {}))
+                        ? { ...i, quantity: newQuantity }
+                        : i
                 );
                 set({ items: newItems, total: newItems.reduce((sum, item) => sum + item.price * item.quantity, 0) });
 
@@ -112,8 +134,9 @@ export const useCartStore = create<CartState>()(
                     supabase.from('cart_items').upsert({
                         user_id: user.id,
                         product_id: id,
-                        quantity: newQuantity
-                    }, { onConflict: 'user_id,product_id' }).then();
+                        quantity: newQuantity,
+                        variant_combo: variant_combo || {}
+                    }, { onConflict: 'user_id,product_id,variant_combo' }).then();
                 }
             },
             clearCart: () => {

@@ -156,7 +156,18 @@ export const ReceiptModal = ({ order, onClose }: { order: any, onClose: () => vo
                                             </div>
                                             <div>
                                                 <p className="font-black text-sm">{item.products?.name || 'Product'}</p>
-                                                <p className="text-[10px] opacity-30 tracking-widest font-bold uppercase">{item.products?.sku || 'PREMIUM-ITEM'}</p>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <p className="text-[10px] opacity-30 tracking-widest font-bold uppercase">{item.products?.sku || 'PREMIUM-ITEM'}</p>
+                                                    {item.variant_combo && Object.entries(item.variant_combo).length > 0 && (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {Object.entries(item.variant_combo as Record<string, string>).map(([k, v]) => (
+                                                                <span key={k} className="text-[9px] font-black uppercase text-primary">
+                                                                    {k}: {String(v)}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <p className="font-black tracking-tighter">Rs. {(item.price * item.quantity).toLocaleString()}</p>

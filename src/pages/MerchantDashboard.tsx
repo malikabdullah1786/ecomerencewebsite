@@ -40,7 +40,6 @@ const QRScannerPopup = ({ onScan, onClose }: { onScan: (data: string) => void, o
     </div>
 );
 
-import { useCategories } from '../hooks/useCategories';
 
 // Unified Product Form is robustly typed in its own file.
 export const MerchantDashboard = () => {
@@ -449,6 +448,19 @@ export const MerchantDashboard = () => {
                                         <span className="text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-full">{order.status}</span>
                                     </div>
                                     <p className="text-sm opacity-50 font-medium">#{order.order_number || order.id} • {new Date(order.created_at).toLocaleDateString()}</p>
+                                    <div className="mt-2 space-y-1">
+                                        {order.order_items?.map((item: any, i: number) => {
+                                            const variants = item.variant_combo && Object.entries(item.variant_combo).length > 0
+                                                ? Object.entries(item.variant_combo).map(([k, v]) => `${k}: ${v}`).join(', ')
+                                                : null;
+                                            return (
+                                                <div key={i} className="text-xs font-medium opacity-70">
+                                                    {item.quantity}x {item.products?.name}
+                                                    {variants && <span className="ml-2 text-primary font-bold">[{variants}]</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                     <p className="text-lg font-black text-primary mt-2">Rs. {Number(order.total_amount).toLocaleString()}</p>
                                 </div>
                                 <div className="flex gap-4">
@@ -540,7 +552,14 @@ export const MerchantDashboard = () => {
                                                             </div>
                                                             <div>
                                                                 <p className="text-xs font-bold opacity-60">{item.products.name}</p>
-                                                                <span className="text-[10px] font-black bg-foreground/5 px-2 py-0.5 rounded-full">{item.quantity}x</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-black bg-foreground/5 px-2 py-0.5 rounded-full">{item.quantity}x</span>
+                                                                    {item.variant_combo && Object.entries(item.variant_combo).length > 0 && (
+                                                                        <span className="text-[10px] text-primary font-bold uppercase">
+                                                                            {Object.entries(item.variant_combo).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <p className="text-xs font-black">Rs. {(item.products.price * item.quantity).toLocaleString()}</p>

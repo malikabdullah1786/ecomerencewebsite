@@ -246,8 +246,7 @@ function App() {
             // If searching, ignore category filter to search global store
             const matchesCategory = searchQuery.trim() !== '' || activeCategory === 'All' || p.category === activeCategory;
 
-            const isAvailable = p.stock > 0;
-            return matchesSearch && matchesCategory && isAvailable;
+            return matchesSearch && matchesCategory;
         });
 
 
