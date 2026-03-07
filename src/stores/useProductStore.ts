@@ -19,6 +19,12 @@ export interface Product {
     image_urls?: string[];
     avg_rating?: number;
     compare_at_price?: number;
+    // SEO fields
+    seo_title?: string;
+    meta_description?: string;
+    slug?: string;
+    alt_text?: string;
+    tags?: string[];
 }
 
 interface ProductState {
@@ -79,13 +85,24 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
         if (!shouldFetch || loading) return;
 
-        set({ loading: true });
+        set({ loading: true, error: null });
+
+        // Guard: if the fetch is still running after 15s, stop the spinner and show an error
+        let timedOut = false;
+        const timeoutId = setTimeout(() => {
+            timedOut = true;
+            set({ loading: false, error: 'Product fetch timed out. Please refresh.' });
+        }, 15000);
+
         try {
             const { data, error } = await supabase
                 .from('products')
                 .select('*, reviews(rating)')
                 .is('deleted_at', null)
                 .order('id', { ascending: true });
+
+            // If the timeout already fired, don't update state with stale data
+            if (timedOut) return;
 
             if (error) throw error;
 
@@ -103,10 +120,13 @@ export const useProductStore = create<ProductState>((set, get) => ({
                 lastFetched: Date.now()
             });
         } catch (err: any) {
+            if (timedOut) return; // Timeout already handled it
             console.error('Error fetching products:', err);
             set({ error: err.message });
         } finally {
-            set({ loading: false });
+            clearTimeout(timeoutId);
+            if (!timedOut) set({ loading: false });
         }
     }
+
 }));

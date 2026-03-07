@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
+// Module-level subscription — prevents listener stacking on every initialize() call
+let authSubscription: { unsubscribe: () => void } | null = null;
+
 interface AuthState {
     user: User | null;
     role: 'admin' | 'merchant' | 'customer' | null;
@@ -23,7 +26,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     initialize: async () => {
         try {
             console.log('🔄 Initializing Auth Store...');
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            // Race getSession() against a 10-second timeout so we never hang forever
+            const sessionResult = await Promise.race<ReturnType<typeof supabase.auth.getSession>>([
+                supabase.auth.getSession(),
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Auth session fetch timed out')), 10000)
+                ),
+            ]);
+
+            const { data: { session }, error: sessionError } = await sessionResult;
 
             if (sessionError) {
                 console.error('❌ Session fetch error:', sessionError);
@@ -59,7 +71,13 @@ export const useAuthStore = create<AuthState>((set) => ({
                 set({ user: null, role: null, loading: false });
             }
 
-            supabase.auth.onAuthStateChange(async (event, session) => {
+            // Unsubscribe from any previous listener before registering a new one
+            if (authSubscription) {
+                authSubscription.unsubscribe();
+                authSubscription = null;
+            }
+
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
                 console.log('🔄 Auth state changed:', event, session?.user?.email);
                 if (session?.user) {
                     const role = await fetchRole(session.user.id);
@@ -68,6 +86,8 @@ export const useAuthStore = create<AuthState>((set) => ({
                     set({ user: null, role: null, loading: false });
                 }
             });
+
+            authSubscription = subscription;
         } catch (err) {
             console.error('❌ Auth initialization failed:', err);
             set({ user: null, role: null, loading: false });

@@ -25,7 +25,7 @@ export const AuthPage = ({ type = 'login', onClose }: { type?: 'login' | 'signup
                     password,
                     options: {
                         data: { full_name: fullName },
-                        emailRedirectTo: window.location.origin
+                        emailRedirectTo: import.meta.env.VITE_SITE_URL || window.location.origin
                     }
                 });
                 if (error) {

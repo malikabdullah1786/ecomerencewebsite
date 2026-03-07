@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useToastStore } from '../stores/useToastStore';
 import { ReceiptModal } from '../components/ReceiptModal';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 
 declare global {
     interface Window {
@@ -52,6 +53,12 @@ interface ProductForm {
     description: string;
     is_returnable: boolean;
     compare_at_price?: string | number;
+    // SEO
+    seo_title?: string;
+    meta_description?: string;
+    slug?: string;
+    alt_text?: string;
+    tags?: string; // stored as comma-separated string in the form
 }
 
 export const MerchantDashboard = () => {
@@ -76,8 +83,40 @@ export const MerchantDashboard = () => {
         image_urls: [],
         description: '',
         is_returnable: true,
-        compare_at_price: ''
+        compare_at_price: '',
+        seo_title: '',
+        meta_description: '',
+        slug: '',
+        alt_text: '',
+        tags: '',
     });
+
+    // Auto-fill SEO fields when merchant types the product name
+    const handleNameChange = (name: string, isEditing = false) => {
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const seoTitle = name ? `Buy ${name} Online in Pakistan | Tarzify` : '';
+        const altText = name ? `${name} - Buy Online at Tarzify Pakistan` : '';
+        const autoTags = name ? `${name.toLowerCase()}, buy online pakistan, tarzify, ${newProduct.category?.toLowerCase() || ''}` : '';
+        if (isEditing) {
+            setEditingProduct(prev => prev ? ({
+                ...prev,
+                name,
+                slug: prev.slug || slug,
+                seo_title: prev.seo_title || seoTitle,
+                alt_text: prev.alt_text || altText,
+            }) : null);
+        } else {
+            setNewProduct(prev => ({
+                ...prev,
+                name,
+                slug: prev.slug || slug,
+                seo_title: prev.seo_title || seoTitle,
+                alt_text: prev.alt_text || altText,
+                tags: prev.tags || autoTags,
+            }));
+        }
+    };
+
     const [editingProduct, setEditingProduct] = useState<ProductForm | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -177,7 +216,7 @@ export const MerchantDashboard = () => {
 
     const handleUpdateStatus = async (orderId: number, status: string) => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/status/${orderId}`, {
+            const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL}/orders/status/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })
@@ -255,10 +294,10 @@ export const MerchantDashboard = () => {
         formData.append('images', file); // Use 'images' key as backend expects array but handles single here too
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/products/upload`, {
+            const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL}/products/upload`, {
                 method: 'POST',
                 body: formData
-            });
+            }, 30000); // 30s for file uploads
             const data = await res.json();
 
             if (data.success) {
@@ -266,8 +305,8 @@ export const MerchantDashboard = () => {
             } else {
                 toast.show('Upload failed: ' + data.error, 'error');
             }
-        } catch (error) {
-            toast.show('Upload error', 'error');
+        } catch (error: any) {
+            toast.show('Upload error: ' + error.message, 'error');
         } finally {
             setUploading(false);
         }
@@ -276,7 +315,7 @@ export const MerchantDashboard = () => {
     const handleAssignTracking = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/orders/assign-tracking/${trackingData.orderId}`, {
+            const res = await fetchWithTimeout(`${import.meta.env.VITE_API_URL}/orders/assign-tracking/${trackingData.orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -293,8 +332,8 @@ export const MerchantDashboard = () => {
             } else {
                 toast.show('Error assigning tracking: ' + data.error, 'error');
             }
-        } catch (error) {
-            toast.show('Error assigning tracking', 'error');
+        } catch (error: any) {
+            toast.show('Error assigning tracking: ' + error.message, 'error');
         }
     };
 
@@ -366,6 +405,10 @@ export const MerchantDashboard = () => {
         try {
             if (!user) throw new Error('You must be logged in.');
 
+            const tagArray = newProduct.tags
+                ? newProduct.tags.split(',').map(t => t.trim()).filter(Boolean)
+                : [];
+
             const { error } = await supabase.from('products').insert({
                 merchant_id: user.id,
                 name: newProduct.name,
@@ -377,14 +420,19 @@ export const MerchantDashboard = () => {
                 image_urls: newProduct.image_urls,
                 description: newProduct.description,
                 is_returnable: newProduct.is_returnable,
-                compare_at_price: newProduct.compare_at_price ? (typeof newProduct.compare_at_price === 'string' ? parseFloat(newProduct.compare_at_price) : newProduct.compare_at_price) : null
+                compare_at_price: newProduct.compare_at_price ? (typeof newProduct.compare_at_price === 'string' ? parseFloat(newProduct.compare_at_price) : newProduct.compare_at_price) : null,
+                seo_title: newProduct.seo_title || null,
+                meta_description: newProduct.meta_description || null,
+                slug: newProduct.slug || null,
+                alt_text: newProduct.alt_text || null,
+                tags: tagArray.length > 0 ? tagArray : null,
             });
 
             if (error) throw error;
 
             toast.show('Product added successfully!', 'success');
             setActiveTab('inventory');
-            setNewProduct({ name: '', sku: '', price: '', stock: '', category: 'Fashion', image_url: '', image_urls: [], description: '', is_returnable: true });
+            setNewProduct({ name: '', sku: '', price: '', stock: '', category: 'Fashion', image_url: '', image_urls: [], description: '', is_returnable: true, seo_title: '', meta_description: '', slug: '', alt_text: '', tags: '' });
             refetchProducts();
         } catch (error: any) {
             toast.show('Error adding product: ' + error.message, 'error');
@@ -398,6 +446,10 @@ export const MerchantDashboard = () => {
         if (!editingProduct) return;
         setIsSubmitting(true);
         try {
+            const tagArray = editingProduct.tags
+                ? editingProduct.tags.split(',').map(t => t.trim()).filter(Boolean)
+                : [];
+
             const { error } = await supabase
                 .from('products')
                 .update({
@@ -410,7 +462,12 @@ export const MerchantDashboard = () => {
                     image_urls: editingProduct.image_urls,
                     description: editingProduct.description,
                     is_returnable: editingProduct.is_returnable,
-                    compare_at_price: editingProduct.compare_at_price ? (typeof editingProduct.compare_at_price === 'string' ? parseFloat(editingProduct.compare_at_price) : editingProduct.compare_at_price) : null
+                    compare_at_price: editingProduct.compare_at_price ? (typeof editingProduct.compare_at_price === 'string' ? parseFloat(editingProduct.compare_at_price) : editingProduct.compare_at_price) : null,
+                    seo_title: editingProduct.seo_title || null,
+                    meta_description: editingProduct.meta_description || null,
+                    slug: editingProduct.slug || null,
+                    alt_text: editingProduct.alt_text || null,
+                    tags: tagArray.length > 0 ? tagArray : null,
                 })
                 .eq('id', editingProduct.id);
 
@@ -532,7 +589,7 @@ export const MerchantDashboard = () => {
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={() => {
-                                            setEditingProduct({ ...product, price: product.price.toString(), stock: product.stock.toString(), description: product.description || '', image_urls: product.image_urls || [], is_returnable: !!product.is_returnable });
+                                            setEditingProduct({ ...product, price: product.price.toString(), stock: product.stock.toString(), description: product.description || '', image_urls: product.image_urls || [], is_returnable: !!product.is_returnable, tags: Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '') });
                                             setActiveTab('edit-product');
                                         }} className="p-3 bg-foreground/5 rounded-xl hover:bg-foreground/10"><Edit2 className="w-4 h-4" /></button>
                                         <button onClick={() => handleDeleteProduct(product.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white"><X className="w-4 h-4" /></button>
@@ -576,7 +633,7 @@ export const MerchantDashboard = () => {
                         <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-10 pb-20">
                             <div className="col-span-2 space-y-3">
                                 <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Name</label>
-                                <input required type="text" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all text-xl font-bold" placeholder="Enter product name..." />
+                                <input required type="text" value={newProduct.name} onChange={e => handleNameChange(e.target.value, false)} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all text-xl font-bold" placeholder="Enter product name..." />
                             </div>
                             <div className="space-y-3">
                                 <label className="text-xs font-black uppercase tracking-widest opacity-30">SKU (Unique ID)</label>
@@ -677,6 +734,44 @@ export const MerchantDashboard = () => {
                                 )}
                             </div>
 
+                            {/* SEO Fields Section */}
+                            <div className="col-span-2 space-y-6 pt-10 border-t border-white/5">
+                                <div>
+                                    <h3 className="text-xl font-black italic uppercase tracking-tighter text-primary">SEO Settings</h3>
+                                    <p className="text-xs opacity-40 mt-1">Auto-filled from product name — edit to customize for better Google ranking</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">SEO Title (Google tab title)</label>
+                                        <input type="text" value={newProduct.seo_title || ''} onChange={e => setNewProduct({ ...newProduct, seo_title: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm font-medium" placeholder={`Buy ${newProduct.name || '...'} Online in Pakistan | Tarzify`} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">URL Slug (SEO-friendly URL)</label>
+                                        <input type="text" value={newProduct.slug || ''} onChange={e => setNewProduct({ ...newProduct, slug: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm font-mono text-primary" placeholder="e.g. wireless-bluetooth-headphones" />
+                                    </div>
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Meta Description (max 160 chars — shown in Google search)</label>
+                                        <input type="text" maxLength={160} value={newProduct.meta_description || ''} onChange={e => setNewProduct({ ...newProduct, meta_description: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm" placeholder="Shop ... at Tarzify. Fast delivery across Pakistan. Cash on delivery available." />
+                                        <p className="text-[9px] opacity-30 text-right">{(newProduct.meta_description || '').length}/160</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Image Alt Text (for Google Images)</label>
+                                        <input type="text" value={newProduct.alt_text || ''} onChange={e => setNewProduct({ ...newProduct, alt_text: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm" placeholder={`${newProduct.name || '...'} - Buy Online at Tarzify Pakistan`} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-30">Keywords / Tags (comma-separated)</label>
+                                        <input type="text" value={newProduct.tags || ''} onChange={e => setNewProduct({ ...newProduct, tags: e.target.value })} className="w-full glass border-none rounded-2xl p-4 outline-none text-sm" placeholder="e.g. buy online, tarzify, pakistan, fashion" />
+                                        {newProduct.tags && (
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {newProduct.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                                                    <span key={tag} className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-full">{tag}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <button type="submit" disabled={isSubmitting} className="col-span-2 py-6 bg-primary text-white rounded-[2.5rem] font-black uppercase italic tracking-tighter text-2xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
                                 {isSubmitting ? 'Creating...' : 'Publish Product'}
                             </button>
@@ -700,7 +795,7 @@ export const MerchantDashboard = () => {
                         <form onSubmit={handleUpdateProduct} className="grid grid-cols-1 md:grid-cols-2 gap-10 pb-20">
                             <div className="col-span-2 space-y-3">
                                 <label className="text-xs font-black uppercase tracking-widest opacity-30">Product Name</label>
-                                <input required type="text" value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all text-xl font-bold" />
+                                <input required type="text" value={editingProduct.name} onChange={e => handleNameChange(e.target.value, true)} className="w-full glass border-none rounded-3xl p-6 outline-none transition-all text-xl font-bold" />
                             </div>
                             <div className="space-y-3">
                                 <label className="text-xs font-black uppercase tracking-widest opacity-30">SKU</label>

@@ -8,6 +8,7 @@ import { ShoppingBag, ArrowLeft, Star, Heart, Share2, ShieldCheck, Truck, Refres
 import { SEO } from '../components/SEO';
 import { useToastStore } from '../stores/useToastStore';
 import { generateProductURL } from '../lib/slugify';
+import { ProductCard } from '../components/ProductCard';
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1560393464-5c69a73c5770?q=80&w=800&auto=format&fit=crop';
 
@@ -25,6 +26,16 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
     const { user } = useAuthStore();
     const addItem = useCartStore((state) => state.addItem);
     const product = products.find(p => String(p.id) === String(productId));
+
+    // Track viewport for suggestion card width (matches home screen grid)
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+    // 3 per row mobile, 4 per row desktop — same gap (8px) as home screen
+    const cardWidth = isMobile ? 'calc(33.333% - 6px)' : 'calc(25% - 9px)';
 
     const [reviews, setReviews] = useState<Review[]>([]);
     const [newRating, setNewRating] = useState(5);
@@ -596,7 +607,70 @@ export const ProductDetails = ({ productId, onBack, onFly }: { productId: number
                     </div>
                 </div>
             </div>
-        </div >
+
+            {/* ── Suggested Products ── */}
+            {(() => {
+                const suggestions = products
+                    .filter(p => p.category === product.category && p.id !== product.id && p.stock > 0)
+                    .slice(0, 8);
+
+                // Hide section only if products loaded AND there's nothing to show
+                if (!productsLoading && suggestions.length === 0) return null;
+
+                const sliderId = 'suggested-products-slider';
+                return (
+                    <section className="mt-20 pt-10 border-t border-foreground/5">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-3">
+                                <span className="block w-1 h-7 bg-primary rounded-full" />
+                                <h2 className="text-2xl md:text-3xl font-black tracking-tighter uppercase italic">You May Also Like</h2>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => { const el = document.getElementById(sliderId); el?.scrollBy({ left: -320, behavior: 'smooth' }); }}
+                                    className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow hover:bg-primary hover:text-white hover:border-primary transition-all"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => { const el = document.getElementById(sliderId); el?.scrollBy({ left: 320, behavior: 'smooth' }); }}
+                                    className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow hover:bg-primary hover:text-white hover:border-primary transition-all"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                        <div
+                            id={sliderId}
+                            className="flex flex-nowrap gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth pb-2"
+                        >
+                            {productsLoading ? (
+                                [1, 2, 3, 4].map(i => (
+                                    <div key={i} className="flex-shrink-0 aspect-[3/4] animate-pulse bg-foreground/5 rounded-2xl" style={{ width: cardWidth }} />
+                                ))
+                            ) : (
+                                suggestions.map(p => (
+                                    <div key={p.id} className="flex-shrink-0" style={{ width: cardWidth }}>
+                                        <ProductCard
+                                            id={p.id}
+                                            name={p.name}
+                                            price={p.price}
+                                            compare_at_price={p.compare_at_price}
+                                            image={p.image_url}
+                                            image_urls={p.image_urls}
+                                            category={p.category}
+                                            sku={p.sku}
+                                            stock={p.stock}
+                                            rating={p.avg_rating}
+                                        />
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </section>
+                );
+            })()}
+        </div>
     );
 };
 

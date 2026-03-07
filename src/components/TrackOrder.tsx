@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Package, Truck, CheckCircle, Clock, X, Plus } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle, Clock, X, Eye, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
@@ -139,26 +139,39 @@ export const TrackOrder = ({ onClose }: { onClose: () => void }) => {
                                             <p className="font-black text-primary select-all">{status.tracking_number}</p>
                                         </div>
                                     </div>
-                                    {status.shipping_proof_url && (
-                                        <div className="mt-4 pt-4 border-t border-white/5">
-                                            <button
-                                                onClick={() => {
-                                                    const win = window.open(status.shipping_proof_url, '_blank');
-                                                    if (win) win.focus();
-                                                }}
-                                                className="flex items-center gap-2 text-xs font-black uppercase tracking-tighter text-primary hover:opacity-80 transition-opacity"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                                View Official Shipment Proof
-                                            </button>
-                                            <div className="mt-4 w-full h-48 rounded-2xl overflow-hidden border border-white/10 group relative cursor-pointer" onClick={() => window.open(status.shipping_proof_url, '_blank')}>
-                                                <img src={status.shipping_proof_url} alt="Shipping Proof" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                    <span className="text-[10px] font-black uppercase text-white tracking-widest">Click to Expand</span>
+                                    {/* Shipping Proof Section */}
+                                    <div className="mt-4 pt-4 border-t border-white/5">
+                                        <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-3">Shipment Proof</p>
+                                        {status.shipping_proof_url ? (
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        const win = window.open(status.shipping_proof_url, '_blank');
+                                                        if (win) win.focus();
+                                                    }}
+                                                    className="flex items-center gap-2 text-xs font-black uppercase tracking-tighter text-primary hover:opacity-80 transition-opacity mb-3"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                    View Full Shipment Proof
+                                                </button>
+                                                <div
+                                                    className="w-full h-48 rounded-2xl overflow-hidden border border-white/10 group relative cursor-pointer"
+                                                    onClick={() => window.open(status.shipping_proof_url, '_blank')}
+                                                >
+                                                    <img src={status.shipping_proof_url} alt="Shipping Proof" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <span className="text-[10px] font-black uppercase text-white tracking-widest">Click to Expand</span>
+                                                    </div>
                                                 </div>
+                                            </>
+                                        ) : (
+                                            /* Placeholder — no proof uploaded yet */
+                                            <div className="w-full h-32 rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 opacity-40">
+                                                <Camera className="w-6 h-6" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Awaiting shipment proof from merchant</span>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

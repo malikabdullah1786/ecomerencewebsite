@@ -82,7 +82,17 @@ export const Hero = () => {
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-6 md:px-0">
-                        <button className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-5 bg-primary text-white rounded-full font-black text-sm md:text-lg hover:scale-105 transition-transform shadow-[0_15px_40px_rgba(8,_112,_184,_0.3)]">
+                        <button
+                            onClick={() => {
+                                const el = document.getElementById('categories');
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                } else {
+                                    window.scrollBy({ top: window.innerHeight * 0.3, behavior: 'smooth' });
+                                }
+                            }}
+                            className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-5 bg-primary text-white rounded-full font-black text-sm md:text-lg hover:scale-105 transition-transform shadow-[0_15px_40px_rgba(8,_112,_184,_0.3)]"
+                        >
                             Shop the Collection
                         </button>
                     </div>
