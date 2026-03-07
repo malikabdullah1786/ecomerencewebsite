@@ -32,3 +32,4 @@ jobs:
             
             # Restart the server (using PM2)
             pm2 restart tarzify-backend || pm2 start dist/index.js --name "tarzify-backend"
+            echo "Deployed at $(date)"
