@@ -105,10 +105,17 @@ function App() {
     useEffect(() => {
         if (window.location.href.includes('review=success')) {
             useToastStore.getState().show('Thank you for your review! 🌟', 'success');
-            // Clean up the URL
+
+            // Clean up both hash-based and standard query params
+            if (window.location.hash.includes('review=success')) {
+                window.location.hash = window.location.hash.split('?')[0];
+            }
+
             const url = new URL(window.location.href);
-            url.searchParams.delete('review');
-            window.history.replaceState({}, '', url.toString());
+            if (url.searchParams.has('review')) {
+                url.searchParams.delete('review');
+                window.history.replaceState({}, '', url.toString());
+            }
         }
     }, []);
 
@@ -172,7 +179,7 @@ function App() {
             }
 
             if (hash.startsWith('#product/')) {
-                const path = hash.replace('#product/', '').toUpperCase();
+                const path = hash.replace('#product/', '').split('?')[0].toUpperCase();
                 if (products.length > 0) {
                     const matched = products.find(p => path.endsWith(p.sku.toUpperCase()));
                     if (matched) {
