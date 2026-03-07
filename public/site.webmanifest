@@ -1,6 +1,7 @@
 {
-    "name": "Tarzify | Premium Lifestyle Store",
-    "short_name": "Tarzify",
+    "name": "TARZIFY | Premium E-Commerce Store",
+    "short_name": "TARZIFY",
+    "description": "Discover premium quality products with rapid, tracked delivery across Pakistan.",
     "icons": [
         {
             "src": "/favicon-192x192.png",
@@ -15,8 +16,9 @@
             "purpose": "maskable"
         }
     ],
-    "theme_color": "#1e3a8a",
+    "theme_color": "#f85606",
     "background_color": "#ffffff",
     "display": "standalone",
+    "orientation": "portrait",
     "start_url": "/"
 }
